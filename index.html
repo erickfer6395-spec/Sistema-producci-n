@@ -394,6 +394,47 @@ select.filtro{
 .toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
 .toast.mal{background:#b91c1c}
 
+/* ============ HOJA DE IMPRESIÓN ============
+   En pantalla está oculta. Al imprimir se esconde la aplicación entera y
+   sale sólo esta hoja, pensada para llevarla a la mesa de trabajo. */
+#impresion{display:none}
+@media print{
+  @page{size:A4 portrait; margin:12mm 10mm}
+  body{display:block !important; background:#fff !important; overflow:visible !important}
+  body > header, body > main, body > footer, body > .velo, body > .toast{display:none !important}
+  #impresion{display:block !important; font-family:'Inter',sans-serif; color:#000; font-size:10pt}
+
+  .imp-cab{border-bottom:2.5pt solid #000; padding-bottom:5pt; margin-bottom:9pt}
+  .imp-cab h1{margin:0; font-size:17pt; letter-spacing:-.3pt}
+  .imp-cab .sub{font-size:10pt; margin-top:2pt}
+  .imp-cab .tot{font-size:9pt; margin-top:3pt}
+
+  .imp-sis{font-size:8.5pt; font-weight:800; letter-spacing:1pt; text-transform:uppercase;
+           margin:9pt 0 3pt; border-bottom:.8pt solid #999; padding-bottom:1pt}
+
+  .imp-duc{break-inside:avoid; page-break-inside:avoid; margin-bottom:7pt}
+  .imp-duc-h{background:#e8e8e8; border:.8pt solid #000; padding:3pt 5pt;
+             font-weight:800; font-size:10.5pt; display:flex; justify-content:space-between; gap:8pt}
+  .imp-sop{font-weight:800; font-size:10pt; white-space:nowrap}
+  .imp-duc-d{font-size:8.5pt; font-weight:400; padding:2pt 5pt; border:.8pt solid #999; border-top:0}
+
+  .imp-pz{break-inside:avoid; page-break-inside:avoid}
+  .imp-pz-h{font-weight:700; font-size:9.5pt; padding:3pt 5pt 1pt}
+  table.imp{width:100%; border-collapse:collapse; font-size:9pt}
+  table.imp th{background:#f0f0f0; border:.6pt solid #666; padding:2pt 4pt; text-align:left;
+               font-size:8pt; text-transform:uppercase; letter-spacing:.4pt}
+  table.imp td{border:.6pt solid #999; padding:2.5pt 4pt; vertical-align:top}
+  table.imp td.c{text-align:center; width:20pt; font-weight:800}
+  table.imp td.l{width:26pt; text-align:center; font-weight:800}
+  table.imp td.m{width:95pt; white-space:nowrap}
+  table.imp td.mat{width:110pt; font-size:8pt}
+  table.imp tr.hecho td{color:#666}
+  table.imp tr.hecho td.id{text-decoration:line-through}
+
+  .imp-pie{margin-top:10pt; border-top:.8pt solid #999; padding-top:4pt; font-size:8pt; color:#444}
+  .imp-nada{padding:14pt; text-align:center; font-size:11pt}
+}
+
 @media (max-width:1250px){
   .arbol{width:262px} .lienzo-panel{width:330px}
   .duc-h{font-size:1.05rem; padding:13px 14px; min-height:52px}
@@ -526,6 +567,7 @@ select.filtro{
           <button class="btn" data-etf="listos">Listos</button>
         </div>
         <button class="btn" id="etMarcarN">☑ Marcar N…</button>
+        <button class="btn" id="etImprimir">🖨 Imprimir</button>
         <div class="et-stats"><b id="etHechas">0</b><span>de</span><b id="etTotal">0</b></div>
       </div>
       <div class="scroll"><div class="et-lista" id="etLista"></div></div>
@@ -557,6 +599,9 @@ select.filtro{
   <span class="guardado"><i class="punto" id="piePunto"></i><span id="pieGuardado">Sin cambios</span></span>
   <span id="pieLib" style="margin-left:auto"></span>
 </footer>
+
+<!-- Hoja para imprimir. Oculta en pantalla; al imprimir es lo único que sale. -->
+<div id="impresion"></div>
 
 <div class="velo" id="veloCarga"><div class="modal" style="text-align:center">
   <div style="font-size:2.2rem;line-height:1">⏳</div>
@@ -2530,6 +2575,103 @@ var Ens=(function(){
       b.classList.add('on'); filtroTodo=b.dataset.etf; refrescarTodo();
     };
   });
+  /* ---------- hoja para imprimir ----------
+     Sale el proyecto COMPLETO, agrupado por ducto, porque el dato de los
+     soportes (largo, horas y cantidad) pertenece al ducto y no al lienzo.
+     Lo ya marcado sale tachado, y lo pendiente con su casilla vacía para
+     poder palomearlo a mano en la mesa. */
+  function textoSoportes(D){
+    if(!D.horas.length) return 'SIN SOPORTES';
+    var m=Number(D.largo_m);
+    var largo = (m>0) ? (fmt(m)+' m') : 'largo NO especificado';
+    return (D.cantSop?(D.cantSop+' soportes de '):'Soportes de ')+largo+
+           ' @ '+D.horas.map(function(h){
+             var e=Math.floor(h), mm=Math.round((h-e)*60);
+             if(mm===60){e++;mm=0;}
+             return (e===0?12:e)+':'+String(mm).padStart(2,'0');
+           }).join(' y ');
+  }
+  // Estimación de hojas: alto en mm de lo que se va a componer, entre el alto
+  // útil de un A4 (297 − 24 de márgenes). Sirve para avisar antes de mandar
+  // media resma a la impresora sin querer.
+  function hojasEstimadas(){
+    var mm=25 + P.conteos.ductos*12 + P.conteos.piezas*11 + P.ensamble.length*5.5;
+    return Math.max(1, Math.ceil(mm/273));
+  }
+  async function imprimirLista(){
+    if(!P){ toast('Abre un proyecto primero',true); return; }
+    var hojas=hojasEstimadas();
+    if(hojas>4){
+      var ok=await preguntar({titulo:'Son bastantes hojas',
+        texto:'Este proyecto tiene '+P.ensamble.length+' lienzos en '+P.conteos.ductos+
+              ' ductos: salen unas '+hojas+' hojas. ¿Lo imprimo igual?',
+        si:'Imprimir '+hojas+' hojas', no:'Mejor no'});
+      if(!ok) return;
+    }
+    var hechos=0; P.ensamble.forEach(function(l){ if(est.marcados[l.clave]) hechos++; });
+    var f=new Date();
+    var fecha=String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+'/'+
+              f.getFullYear()+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0');
+
+    var h=['<div class="imp-cab">',
+      '<h1>Ensamble · '+esc(P.folio)+'</h1>',
+      '<div class="sub">'+esc(P.cliente)+'</div>',
+      '<div class="tot">'+P.conteos.ductos+' ductos · '+P.conteos.piezas+' piezas · '+
+        P.ensamble.length+' lienzos · '+hechos+' ya marcados · Impreso '+fecha+'</div>',
+      '</div>'];
+
+    if(!P.ensamble.length){
+      h.push('<div class="imp-nada">Este proyecto no trae lienzos.</div>');
+    }
+    P.sistemas.forEach(function(S){
+      if(!S.ductos.length) return;
+      if(P.sistemas.length>1) h.push('<div class="imp-sis">Sistema '+esc(S.id)+'</div>');
+      S.ductos.forEach(function(D){
+        var tot=0, hh=0;
+        D.piezas.forEach(function(pz){ pz.lienzos.forEach(function(l){
+          tot++; if(est.marcados[l.clave]) hh++; }); });
+        h.push('<div class="imp-duc">');
+        h.push('<div class="imp-duc-h"><span>Ducto '+esc(D.numero)+'</span>'+
+               '<span class="imp-sop">'+esc(textoSoportes(D))+'</span></div>');
+        var d=[NOMBRE_FORMA[clasificarForma(D.forma)]];
+        if(D.perimetro_cm!=null) d.push('perímetro '+fmt(D.perimetro_cm)+' cm');
+        if(clasificarForma(D.forma)==='circular'&&D.diametro_cm) d.push('Ø '+fmt(D.diametro_cm)+' cm');
+        d.push(hh+' de '+tot+' lienzos marcados');
+        h.push('<div class="imp-duc-d">'+esc(d.join(' · '))+'</div>');
+
+        D.piezas.forEach(function(pz){
+          h.push('<div class="imp-pz">');
+          h.push('<div class="imp-pz-h">Pieza '+esc(pz.letra)+
+                 (pz.largo_cm?(' — largo '+fmt(pz.largo_cm)+' cm'):'')+'</div>');
+          if(!pz.lienzos.length){
+            h.push('<div class="imp-duc-d">Sin lienzos en el JSON.</div></div>'); return;
+          }
+          h.push('<table class="imp"><thead><tr><th></th><th>N.º</th>'+
+                 '<th>Identificación del lienzo</th><th>Medidas</th><th>Material / Color</th>'+
+                 '</tr></thead><tbody>');
+          pz.lienzos.forEach(function(L){
+            var m=!!est.marcados[L.clave];
+            h.push('<tr'+(m?' class="hecho"':'')+'>'+
+              '<td class="c">'+(m?'✓':'☐')+'</td>'+
+              '<td class="l">'+esc(L.etiqueta)+'</td>'+
+              '<td class="id">'+esc(L.id)+(L.esVena?' <b>(VENA)</b>':'')+'</td>'+
+              '<td class="m">'+fmt(L.largo_cm)+' × '+fmt(L.ancho_cm)+' cm</td>'+
+              '<td class="mat">'+esc([L.material,L.color].filter(Boolean).join(' · '))+'</td>'+
+              '</tr>');
+          });
+          h.push('</tbody></table></div>');
+        });
+        h.push('</div>');
+      });
+    });
+    h.push('<div class="imp-pie">Sistema de Producción DTI · '+esc(P.folio)+' · '+fecha+
+           ' · La cantidad de soportes se reparte a lo largo del ducto.</div>');
+
+    $('#impresion').innerHTML=h.join('');
+    setTimeout(function(){ window.print(); },60);
+  }
+  $('#etImprimir').onclick=imprimirLista;
+
   $('#etMarcarN').onclick=async function(){
     if(bloqueado()) return;
     var pend=itemsTodo.filter(function(L){
