@@ -1,0 +1,11 @@
+{
+ "v": 1,
+ "actualizado": "2026-09-18T20:43:38Z",
+ "proyectos": [
+  {"folio":"DTI-260258","cliente":"Cyme","archivo":"datos/DTI-260258.json","bytes":10413,"sha":"72cb48f6206231da","jerarquico":true,"conteos":{"sistemas":1,"ductos":2,"piezas":10,"lienzos":45,"accesorios":3,"unidadesAcc":3,"corte":48}},
+  {"folio":"DTI-260701","cliente":"DTI Andina SAS","archivo":"datos/DTI-260701.json","bytes":5412,"sha":"401ef29d994f87ea","jerarquico":true,"conteos":{"sistemas":2,"ductos":8,"piezas":8,"lienzos":16,"accesorios":8,"unidadesAcc":15,"corte":24}},
+  {"folio":"DTI-260831","cliente":"Operadora de Turismo en SMA","archivo":"datos/DTI-260831.json","bytes":3237,"sha":"bfcee2cb5544d3cb","jerarquico":true,"conteos":{"sistemas":1,"ductos":2,"piezas":4,"lienzos":12,"accesorios":3,"unidadesAcc":8,"corte":15}},
+  {"folio":"DTI-261014","cliente":"Soluciones Comerciales","archivo":"datos/DTI-261014.json","bytes":3096,"sha":"309fdc110705b743","jerarquico":true,"conteos":{"sistemas":2,"ductos":2,"piezas":4,"lienzos":12,"accesorios":2,"unidadesAcc":2,"corte":14}},
+  {"folio":"DTI-261059","cliente":"Vent Depot","archivo":"datos/DTI-261059.json","bytes":11589,"sha":"c69cc8375f7a90b6","jerarquico":true,"conteos":{"sistemas":4,"ductos":4,"piezas":12,"lienzos":48,"accesorios":8,"unidadesAcc":12,"corte":56}}
+ ]
+}

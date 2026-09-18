@@ -1,0 +1,5 @@
+# Este sitio es una herramienta interna de producción.
+# Esto sólo pide a los buscadores que no lo indexen; NO lo hace privado:
+# el repositorio es público y cualquiera con la dirección puede abrirlo.
+User-agent: *
+Disallow: /

@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- El robots.txt de una «project page» de GitHub Pages queda en una subcarpeta
+     y los buscadores no lo leen; esta etiqueta sí la respetan en cualquier ruta.
+     Aun así el sitio es PÚBLICO: esto sólo evita que salga en las búsquedas. -->
+<meta name="robots" content="noindex,nofollow">
+<title>Sistema de Producción DTI</title>
+<style>
+:root{
+  --corte:#3b82f6; --corte-d:#1e40af; --corte-bg:#eff6ff;
+  --ens:#10b981;   --ens-d:#047857;   --ens-bg:#ecfdf5;
+  --acento:#8b5cf6; --ok:#10b981; --warn:#f59e0b; --mal:#ef4444;
+  --bg:#f1f5f9; --card:#ffffff; --borde:#e2e8f0; --borde2:#cbd5e1;
+  --tinta:#0f172a; --tinta2:#475569; --tinta3:#94a3b8;
+  --r:12px; --sombra:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+  --sombra2:0 10px 25px -5px rgba(15,23,42,.10);
+  --barra:56px; --pie:34px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  background:var(--bg); color:var(--tinta); font-size:15px; line-height:1.45;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+button{font-family:inherit; font-size:inherit; cursor:pointer}
+input,select{font-family:inherit; font-size:inherit}
+
+/* ============ BARRA SUPERIOR ============ */
+.barra{
+  height:var(--barra); flex:0 0 auto; background:var(--card); border-bottom:1px solid var(--borde);
+  display:flex; align-items:center; gap:14px; padding:0 16px; z-index:50; box-shadow:var(--sombra);
+}
+/* Cargar es cosa del ingeniero: queda en un icono. Lo que el operador usa
+   —elegir proyecto y elegir Corte o Ensamble— va grande y al centro. */
+.btn-ic{
+  width:46px;height:46px;flex:0 0 auto;border-radius:11px;border:1px solid var(--borde2);
+  background:var(--card); font-size:1.25rem; display:grid; place-items:center; color:var(--tinta2);
+}
+.btn-ic:hover{background:var(--bg); border-color:var(--tinta3)}
+.btn-ic.on{background:var(--tinta); border-color:var(--tinta); color:#fff}
+
+.sel-proy{
+  display:flex; align-items:center; gap:10px; background:var(--card); border:2px solid var(--borde2);
+  border-radius:11px; padding:6px 14px; min-width:0; max-width:290px; height:46px; text-align:left;
+}
+.sel-proy:hover{border-color:var(--tinta3); background:var(--bg)}
+.sp-txt{display:flex; flex-direction:column; line-height:1.2; min-width:0}
+.sp-txt b{font-size:1.02rem; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.sp-txt span{font-size:.76rem; color:var(--tinta3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.sp-fl{color:var(--tinta3); font-size:.9rem; flex:0 0 auto}
+
+.modulos{display:flex; gap:10px}
+.mod{
+  border:2px solid var(--borde2); background:var(--card); color:var(--tinta2); font-weight:800;
+  padding:0 22px; height:46px; border-radius:11px; display:flex; align-items:center; gap:9px;
+  white-space:nowrap; font-size:1.02rem; letter-spacing:.4px; transition:all .15s;
+}
+.mod span{font-size:1.15rem}
+.mod:hover:not(:disabled){border-color:var(--tinta3); color:var(--tinta)}
+.mod:disabled{opacity:.35; cursor:not-allowed}
+.mod.m-corte.on{background:var(--corte); border-color:var(--corte); color:#fff}
+.mod.m-ens.on{background:var(--ens); border-color:var(--ens); color:#fff}
+
+.proy-activo{margin-left:auto; display:flex; align-items:center; gap:12px; min-width:0}
+.mini-prog{display:flex; gap:8px}
+.mp{display:flex; align-items:center; gap:6px; background:var(--bg); padding:5px 10px; border-radius:20px; font-size:.78rem; font-weight:700}
+.mp i{width:8px;height:8px;border-radius:50%;font-style:normal}
+.mp.c i{background:var(--corte)} .mp.e i{background:var(--ens)}
+
+/* ============ PIE DE ESTADO ============ */
+.pie{
+  height:var(--pie); flex:0 0 auto; background:var(--card); border-top:1px solid var(--borde);
+  display:flex; align-items:center; gap:14px; padding:0 14px; font-size:.76rem; color:var(--tinta2);
+}
+.insignia{display:inline-flex; align-items:center; gap:6px; font-weight:700; padding:3px 9px; border-radius:20px}
+.insignia.ok{background:#ecfdf5; color:#047857} .insignia.med{background:#fffbeb; color:#b45309}
+.insignia.mal{background:#fef2f2; color:#b91c1c}
+.guardado{display:inline-flex; align-items:center; gap:6px}
+.punto{width:8px;height:8px;border-radius:50%;background:var(--ok);transition:background .2s}
+.punto.sucio{background:var(--warn)}
+
+/* ============ AREA PRINCIPAL ============ */
+main{flex:1 1 auto; min-height:0; position:relative}
+.vista{position:absolute; inset:0; display:none; flex-direction:column; min-height:0}
+.vista.on{display:flex}
+.scroll{overflow:auto; flex:1 1 auto; min-height:0}
+
+/* ============ BOTONES ============ */
+.btn{
+  border:1px solid var(--borde2); background:var(--card); color:var(--tinta2); font-weight:700;
+  padding:9px 15px; border-radius:9px; display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+  transition:all .15s;
+}
+.btn:hover:not(:disabled){border-color:var(--tinta3); color:var(--tinta); box-shadow:var(--sombra)}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btn.pri{background:var(--corte); border-color:var(--corte); color:#fff}
+.btn.pri:hover:not(:disabled){background:var(--corte-d); border-color:var(--corte-d); color:#fff}
+.btn.pri-e{background:var(--ens); border-color:var(--ens); color:#fff}
+.btn.pri-e:hover:not(:disabled){background:var(--ens-d); border-color:var(--ens-d); color:#fff}
+.btn.on{background:var(--tinta); border-color:var(--tinta); color:#fff}
+.btn.peligro{color:#b91c1c; border-color:#fecaca; background:#fef2f2}
+.btn.peligro:hover:not(:disabled){background:#fee2e2; color:#991b1b}
+.btn.sm{padding:6px 11px; font-size:.83rem; border-radius:7px}
+.btn.xl{padding:14px 22px; font-size:1.02rem; border-radius:11px}
+
+/* ============ VISTA CARGA ============ */
+.carga-wrap{max-width:1180px; margin:0 auto; padding:22px 20px 40px; width:100%}
+.hero{text-align:center; margin-bottom:20px}
+.hero h1{margin:0 0 4px; font-size:1.7rem; font-weight:800; letter-spacing:-.6px}
+.hero p{margin:0; color:var(--tinta2)}
+.soltar{
+  border:2px dashed var(--borde2); border-radius:16px; background:var(--card); padding:26px 20px;
+  text-align:center; transition:all .18s; margin-bottom:18px;
+}
+.soltar.activo{border-color:var(--acento); background:#faf5ff; transform:scale(1.005)}
+.soltar .ic{font-size:2.1rem; line-height:1}
+.soltar h3{margin:8px 0 3px; font-size:1.05rem}
+.soltar p{margin:0 0 14px; color:var(--tinta3); font-size:.87rem}
+.soltar .acciones{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+input[type=file]{display:none}
+
+.barra-lib{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap}
+.buscar{position:relative; flex:1 1 220px; min-width:180px}
+.buscar input{
+  width:100%; padding:10px 12px 10px 36px; border:1px solid var(--borde); border-radius:9px;
+  background:var(--card); outline:none;
+}
+.buscar input:focus{border-color:var(--corte); box-shadow:0 0 0 3px rgba(59,130,246,.13)}
+.buscar .lupa{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--tinta3)}
+
+.rejilla{display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px}
+.tarj{
+  background:var(--card); border:1px solid var(--borde); border-radius:var(--r); padding:15px 16px;
+  display:flex; flex-direction:column; gap:10px; transition:all .18s; position:relative; overflow:hidden;
+}
+.tarj:hover{box-shadow:var(--sombra2); border-color:var(--borde2); transform:translateY(-2px)}
+.tarj-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+.tarj h3{margin:0; font-size:1.06rem; font-weight:800; letter-spacing:-.3px}
+.tarj .cli{color:var(--tinta2); font-size:.87rem; margin-top:1px}
+.tarj .arch{color:var(--tinta3); font-size:.73rem; font-family:ui-monospace,monospace; margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.chips{display:flex; gap:5px; flex-wrap:wrap}
+.chip{background:var(--bg); color:var(--tinta2); font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:6px}
+.chip.av{background:#fffbeb; color:#b45309}
+.chip.mal{background:#fef2f2; color:#b91c1c}
+.chip.info{background:#eef2ff; color:#4338ca}
+.chip.lock{background:#fee2e2; color:#b91c1c}
+.pbar{height:7px; background:var(--bg); border-radius:5px; overflow:hidden}
+.pbar i{display:block; height:100%; border-radius:5px; transition:width .35s ease}
+.pfila{display:flex; align-items:center; gap:9px; font-size:.78rem; font-weight:700; color:var(--tinta2)}
+.pfila .lbl{width:66px; flex:0 0 auto}
+.pfila .pbar{flex:1 1 auto}
+.pfila .num{width:56px; text-align:right; flex:0 0 auto; font-variant-numeric:tabular-nums}
+.tarj-acc{display:flex; gap:8px; margin-top:4px}
+.tarj-acc .btn{flex:1 1 auto; justify-content:center; font-weight:800; letter-spacing:.3px}
+.tarj-acc .btn.peligro{flex:0 0 auto}
+.vacio{
+  grid-column:1/-1; text-align:center; padding:46px 20px; color:var(--tinta3);
+  border:2px dashed var(--borde); border-radius:var(--r); background:rgba(255,255,255,.55);
+}
+
+/* ============ TOOLBAR DE MODULO ============ */
+.cab{
+  flex:0 0 auto; background:var(--card); border-bottom:1px solid var(--borde); padding:12px 18px;
+  display:flex; flex-direction:column; gap:11px;
+}
+.cab-top{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.cab-tit{display:flex; flex-direction:column; min-width:0}
+.cab-tit h2{margin:0; font-size:1.12rem; font-weight:800; letter-spacing:-.3px}
+.cab-tit span{font-size:.82rem; color:var(--tinta3)}
+.stats{display:flex; gap:16px; margin-left:auto; align-items:center; flex-wrap:wrap}
+.st{display:flex; flex-direction:column; align-items:center; line-height:1.1}
+.st b{font-size:1.28rem; font-weight:800; font-variant-numeric:tabular-nums}
+.st span{font-size:.7rem; color:var(--tinta3); text-transform:uppercase; letter-spacing:.5px; font-weight:700}
+.prog-grande{display:flex; align-items:center; gap:11px; flex:1 1 180px; min-width:150px}
+.prog-grande .pbar{height:11px; flex:1 1 auto}
+.prog-grande b{font-size:1.02rem; font-variant-numeric:tabular-nums; min-width:46px; text-align:right}
+.cab-bot{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+select.filtro{
+  padding:9px 11px; border:1px solid var(--borde2); border-radius:9px; background:var(--card);
+  font-weight:700; color:var(--tinta2); max-width:210px;
+}
+.grupo-btn{display:flex; gap:0; border:1px solid var(--borde2); border-radius:9px; overflow:hidden}
+.grupo-btn .btn{border:0; border-radius:0; border-right:1px solid var(--borde2)}
+.grupo-btn .btn:last-child{border-right:0}
+
+/* ============ LISTA DE PIEZAS (corte) ============ */
+.lista{padding:12px 18px 40px; display:flex; flex-direction:column; gap:7px}
+.fila{
+  background:var(--card); border:1px solid var(--borde); border-left:5px solid var(--borde2);
+  border-radius:10px; padding:11px 14px; display:flex; align-items:center; gap:12px; cursor:pointer;
+  transition:background .12s, border-color .12s, box-shadow .12s;
+}
+.fila:hover{box-shadow:var(--sombra); border-left-color:var(--corte)}
+.fila[hidden]{display:none}
+.fila .cuerpo{flex:1 1 auto; min-width:0}
+.fila .tit{font-weight:700; font-size:.97rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.fila .sub{display:flex; gap:7px; flex-wrap:wrap; margin-top:4px}
+.et{font-size:.73rem; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--bg); color:var(--tinta2);
+  display:inline-flex; align-items:center; gap:4px}
+.et.tipo{background:#eef2ff; color:#4338ca}
+.et.mat{background:#fef3c7; color:#92400e}
+.et.dif{background:#fce7f3; color:#be185d}
+.et.vena{background:#e0f2fe; color:#0369a1}
+.et.ruta{background:transparent; color:var(--tinta3); padding-left:0}
+.muestra{width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.2); display:inline-block}
+.check{
+  width:28px;height:28px;flex:0 0 auto;border-radius:50%;border:2px solid var(--borde2);background:var(--card);
+  display:grid;place-items:center;color:transparent;font-weight:900;font-size:15px;transition:all .15s;
+}
+.fila.lista-ok{background:#f0fdf4; border-left-color:var(--ok)}
+.fila.lista-ok .tit{color:#15803d; text-decoration:line-through; opacity:.75}
+.fila.lista-ok .check{background:var(--ok); border-color:var(--ok); color:#fff}
+.fila.saliendo{opacity:.35; transform:translateX(10px); transition:opacity .25s, transform .25s}
+/* contador de accesorios */
+.fila.acc{cursor:default; border-left-color:#a855f7}
+.cont{display:flex; align-items:center; gap:6px; flex:0 0 auto}
+.cont .num{font-weight:800; font-variant-numeric:tabular-nums; min-width:62px; text-align:center; font-size:.95rem}
+.cont .btn{padding:5px 10px; font-weight:900}
+.fila.acc.lista-ok{background:#f0fdf4; border-left-color:var(--ok)}
+
+/* ============ VISTA ENSAMBLE — pantalla de taller ============
+   Letra y objetivos táctiles grandes, alto contraste, sin adornos.
+   Todo lo que no sea el ducto, los lienzos y la medida del soporte está fuera. */
+.ens-cab{
+  flex:0 0 auto; background:var(--card); border-bottom:2px solid var(--borde);
+  padding:12px 20px; display:flex; align-items:center; gap:14px;
+}
+.ens-cab h2{margin:0; font-size:1.5rem; font-weight:800; letter-spacing:-.4px}
+.btn-ops{
+  width:48px; height:48px; border-radius:11px; border:2px solid var(--borde2);
+  background:var(--card); color:var(--tinta2); font-size:1.3rem;
+}
+.btn-ops:first-of-type{margin-left:auto}
+.btn-ops:hover{background:var(--bg); color:var(--tinta); border-color:var(--tinta3)}
+
+/* --- lista completa del proyecto (se abre con 📋) --- */
+.ens-todo{flex:1 1 auto; display:flex; flex-direction:column; min-height:0; background:var(--bg)}
+.et-cab{
+  flex:0 0 auto; background:var(--card); border-bottom:2px solid var(--borde); padding:12px 16px;
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+}
+.et-cab .btn{height:48px; font-size:1rem; font-weight:800}
+.et-cab .buscar input{height:48px; font-size:1rem}
+.et-stats{display:flex; align-items:baseline; gap:6px; margin-left:auto; font-weight:800; white-space:nowrap}
+.et-stats b{font-size:1.45rem; font-variant-numeric:tabular-nums}
+.et-stats b:first-child{color:var(--ens-d)}
+.et-stats span{font-size:.9rem; color:var(--tinta3); font-weight:600}
+.et-lista{padding:12px 16px 40px; display:flex; flex-direction:column; gap:9px}
+.et-fila{
+  background:var(--card); border:2px solid var(--borde); border-left:10px solid var(--borde2);
+  border-radius:12px; padding:13px 16px; display:flex; align-items:center; gap:14px; cursor:pointer;
+  min-height:72px;
+}
+.et-fila[hidden]{display:none}
+.et-fila:hover{border-color:var(--ens)}
+.et-fila .ord{
+  width:50px;height:50px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;
+  font-weight:900;font-size:1.25rem;color:#fff;
+}
+.et-fila .cu{flex:1 1 auto; min-width:0}
+.et-fila .cu b{display:block; font-size:1.02rem; font-weight:700; line-height:1.3; word-break:break-word}
+.et-fila .cu small{color:var(--tinta3); font-size:.88rem; font-weight:600}
+.et-fila .check{width:42px;height:42px;border-width:3px;font-size:23px}
+.et-fila.lista-ok{background:#dcfce7; border-color:var(--ok)}
+.et-fila.lista-ok .cu b{text-decoration:line-through; opacity:.6}
+.et-fila.lista-ok .check{background:var(--ok); border-color:var(--ok); color:#fff}
+
+/* --- selector de proyecto --- */
+.modal-proy{max-width:620px}
+.proy-lista{display:flex; flex-direction:column; gap:9px; max-height:58vh; overflow:auto; margin-bottom:14px}
+.proy-op{
+  border:2px solid var(--borde2); border-radius:12px; padding:14px 16px; cursor:pointer;
+  display:flex; align-items:center; gap:14px; background:var(--card); min-height:72px; text-align:left;
+}
+.proy-op:hover{border-color:var(--corte); background:var(--corte-bg)}
+.proy-op.on{border-color:var(--corte); background:var(--corte-bg)}
+.proy-op .pi{flex:1 1 auto; min-width:0}
+.proy-op .pi b{display:block; font-size:1.15rem; font-weight:800}
+.proy-op .pi span{font-size:.9rem; color:var(--tinta3)}
+.proy-op .pp{display:flex; gap:8px; flex:0 0 auto}
+
+.ens-cols{flex:1 1 auto; display:flex; min-height:0}
+.arbol{
+  width:330px; flex:0 0 auto; background:var(--card); border-right:2px solid var(--borde);
+  overflow:auto; padding:12px;
+}
+.sis-h{
+  font-size:.85rem; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--tinta3);
+  padding:12px 6px 6px;
+}
+.duc{border:2px solid var(--borde); border-radius:12px; margin-bottom:9px; overflow:hidden}
+.duc-h{
+  background:var(--bg); padding:15px 16px; display:flex; align-items:center; gap:12px; cursor:pointer;
+  font-weight:800; font-size:1.18rem; min-height:58px;
+}
+.duc-h:hover{background:#e2e8f0}
+.duc-h .fl{color:var(--tinta3); font-size:.95rem; width:16px; flex:0 0 auto}
+.duc-h .nm{flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.duc-h .cnt{font-size:1rem; font-weight:800; color:var(--tinta3); font-variant-numeric:tabular-nums}
+.duc-h.full{background:#dcfce7}
+.duc-h.full .cnt{color:var(--ens-d)}
+.duc-body{display:none}
+.duc.abierto .duc-body{display:block}
+.pz{
+  padding:14px 16px 14px 34px; border-top:2px solid var(--borde); background:var(--card); cursor:pointer;
+  display:flex; align-items:center; gap:10px; font-size:1.1rem; min-height:56px; font-weight:600;
+}
+.pz:hover{background:#f1f5f9}
+.pz.sel{background:var(--ens-bg); font-weight:800; color:var(--ens-d); box-shadow:inset 6px 0 0 var(--ens)}
+.pz .nm{flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.pz .cnt{font-size:.95rem; color:var(--tinta3); font-variant-numeric:tabular-nums; font-weight:800}
+.pz.full{background:#f0fdf4}
+.pz.full .cnt{color:var(--ens-d)}
+.pz.full .nm::after{content:' ✓'; color:var(--ens); font-weight:900}
+
+.lienzo-panel{
+  width:400px; flex:0 0 auto; background:var(--card); border-left:2px solid var(--borde);
+  display:flex; flex-direction:column; min-height:0;
+}
+.lp-cab{padding:16px 18px; border-bottom:2px solid var(--borde); background:var(--ens-bg)}
+.lp-cab h3{margin:0 0 3px; font-size:1.35rem; font-weight:800; color:var(--ens-d); line-height:1.2}
+.lp-cab .meta{font-size:1rem; color:var(--tinta2); font-weight:600}
+.lp-lista{overflow:auto; flex:1 1 auto; padding:12px; display:flex; flex-direction:column; gap:10px}
+.lz{
+  border:2px solid var(--borde2); border-radius:12px; padding:14px 16px;
+  cursor:pointer; display:flex; align-items:center; gap:14px; transition:all .12s; background:var(--card);
+  min-height:74px;
+}
+.lz:hover{border-color:var(--ens); background:#f8fafc}
+.lz.res{border-color:var(--ens); background:var(--ens-bg)}
+.lz .ord{
+  width:52px;height:52px;flex:0 0 auto;border-radius:12px;display:grid;place-items:center;font-weight:900;
+  font-size:1.3rem;background:#1e40af; color:#fff;
+}
+.lz .cu{flex:1 1 auto; min-width:0}
+.lz .cu b{display:block; font-size:1.05rem; font-weight:700; line-height:1.3; word-break:break-word}
+/* Hecho = fondo verde y palomita. El color de la pastilla NO cambia: es la
+   identidad del lienzo y sirve para emparejarlo con su cuña en el dibujo. */
+.lz.lista-ok{background:#dcfce7; border-color:var(--ok)}
+.lz.lista-ok .cu b{text-decoration:line-through; opacity:.6}
+.lz.lista-ok .check{background:var(--ok); border-color:var(--ok); color:#fff}
+.lp-pie{padding:14px; border-top:2px solid var(--borde)}
+.lp-pie .btn{width:100%; justify-content:center; font-size:1.25rem; font-weight:800;
+  padding:20px; border-radius:14px; letter-spacing:.5px}
+
+.lienzo-panel .check{width:44px;height:44px;border-width:3px;font-size:24px}
+
+.dibujo{
+  flex:1 1 auto; min-width:0; position:relative; overflow:auto; background:
+    linear-gradient(90deg,rgba(148,163,184,.10) 1px,transparent 1px) 0 0/26px 26px,
+    linear-gradient(rgba(148,163,184,.10) 1px,transparent 1px) 0 0/26px 26px, #fbfcfe;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  gap:12px; padding:20px;
+}
+/* flex:0 0 auto es obligatorio: sin él, el contenedor en columna ENCOGE el svg
+   hasta el alto disponible y el botón de acercar no agranda nada. */
+.dibujo svg{display:block; margin:auto 0; order:2; flex:0 0 auto;
+  filter:drop-shadow(0 12px 22px rgba(15,23,42,.08))}
+.dibujo .centro-msg{order:2}
+.zoomc{
+  position:absolute; top:14px; right:14px; display:flex; gap:8px; background:rgba(255,255,255,.96);
+  padding:8px; border-radius:12px; border:2px solid var(--borde); box-shadow:var(--sombra); z-index:20;
+}
+.zb{width:52px;height:52px;border:2px solid var(--borde2); background:var(--card); border-radius:10px;
+  display:grid;place-items:center;font-size:1.5rem; font-weight:800; color:var(--tinta2)}
+.zb:hover{background:var(--bg); border-color:var(--tinta3)}
+  color:#b45309; font-weight:600; display:block; line-height:1.4}
+.centro-msg{
+  margin:auto; text-align:center; color:var(--tinta3); max-width:520px; padding:30px;
+}
+.centro-msg .ic{font-size:2.6rem; margin-bottom:10px}
+.centro-msg h3{margin:0 0 8px; color:var(--tinta); font-size:1.1rem}
+.centro-msg p{margin:0 0 8px; line-height:1.55}
+
+/* ============ MODAL / TOAST ============ */
+.velo{position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; place-items:center; z-index:200; padding:20px}
+.velo.on{display:grid}
+.modal{background:var(--card); border-radius:14px; padding:22px; max-width:440px; width:100%; box-shadow:var(--sombra2)}
+.modal h3{margin:0 0 8px; font-size:1.1rem}
+.modal p{margin:0 0 14px; color:var(--tinta2); font-size:.9rem}
+.modal input{width:100%; padding:10px 12px; border:1px solid var(--borde2); border-radius:9px; margin-bottom:14px}
+.modal .acc{display:flex; gap:8px; justify-content:flex-end}
+.toast{
+  position:fixed; bottom:calc(var(--pie) + 14px); left:50%; transform:translateX(-50%) translateY(16px);
+  background:var(--tinta); color:#fff; padding:11px 18px; border-radius:10px; font-weight:700; font-size:.87rem;
+  opacity:0; pointer-events:none; transition:all .25s; z-index:300; box-shadow:var(--sombra2); max-width:88vw; text-align:center;
+}
+.toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+.toast.mal{background:#b91c1c}
+
+@media (max-width:1250px){
+  .arbol{width:262px} .lienzo-panel{width:330px}
+  .duc-h{font-size:1.05rem; padding:13px 14px; min-height:52px}
+  .pz{font-size:1rem; padding:12px 14px 12px 28px; min-height:50px}
+  .lz{min-height:66px; padding:12px 13px; gap:11px}
+  .lz .ord{width:46px;height:46px;font-size:1.15rem}
+  .lz .cu b{font-size:.97rem}
+  .lienzo-panel .check{width:38px;height:38px}
+  .lp-pie .btn{font-size:1.1rem; padding:17px}
+}
+@media (max-width:860px){
+  .ens-cols{flex-direction:column; overflow:auto}
+  .arbol,.lienzo-panel{width:100%; border:0; border-bottom:2px solid var(--borde); max-height:44vh}
+  .dibujo{min-height:52vh}
+  .proy-chip{display:none}
+  .marca span{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <button class="btn-ic on" id="tabCarga" data-ir="carga" title="Biblioteca · cargar archivos .json">📂</button>
+
+  <button class="sel-proy" id="selProy" title="Cambiar de proyecto">
+    <span class="sp-txt"><b id="spFolio">Sin proyecto</b><span id="spCliente">Toca para elegir</span></span>
+    <span class="sp-fl">▾</span>
+  </button>
+
+  <nav class="modulos">
+    <button class="mod m-corte" id="tabCorte" data-ir="corte" disabled><span>✂️</span>CORTE</button>
+    <button class="mod m-ens" id="tabEns" data-ir="ensamble" disabled><span>🔧</span>ENSAMBLE</button>
+  </nav>
+
+  <div class="proy-activo" id="proyActivo" style="display:none">
+    <div class="mini-prog">
+      <span class="mp c"><i></i><span id="paCorte">0%</span></span>
+      <span class="mp e"><i></i><span id="paEns">0%</span></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ================= CARGA ================= -->
+  <section class="vista on" id="vCarga">
+    <div class="scroll"><div class="carga-wrap">
+      <div class="hero">
+        <h1>Biblioteca de proyectos</h1>
+        <p id="heroTxt">Carga los <b>.json</b> una sola vez. Quedan disponibles para Corte y para Ensamble.</p>
+      </div>
+
+      <div class="soltar" id="soltar">
+        <div class="ic">📂</div>
+        <h3>Arrastra aquí tus archivos o carpetas</h3>
+        <p>Acepta un archivo, varios, o la carpeta <code>output</code> completa</p>
+        <div class="acciones">
+          <button class="btn pri" id="btnArchivos">Elegir archivos .json</button>
+          <button class="btn" id="btnCarpeta">Elegir carpeta completa</button>
+        </div>
+        <input type="file" id="inArchivos" accept=".json,application/json" multiple>
+        <input type="file" id="inCarpeta" webkitdirectory directory multiple>
+      </div>
+
+      <div class="barra-lib">
+        <div class="buscar"><span class="lupa">🔍</span>
+          <input type="text" id="busLib" placeholder="Buscar por folio, cliente o archivo…"></div>
+        <button class="btn sm" id="btnExportar">⬇ Exportar avance</button>
+        <button class="btn sm" id="btnImportar">⬆ Importar avance</button>
+        <button class="btn sm peligro" id="btnVaciar">Vaciar biblioteca</button>
+        <input type="file" id="inRespaldo" accept=".json">
+      </div>
+
+      <div id="errCarga" style="display:none; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;
+           border-radius:12px; padding:12px 15px; margin-bottom:14px; font-size:.85rem"></div>
+
+      <div class="rejilla" id="rejilla"></div>
+    </div></div>
+  </section>
+
+  <!-- ================= CORTE ================= -->
+  <section class="vista" id="vCorte">
+    <div class="cab">
+      <div class="cab-top">
+        <div class="cab-tit"><h2 id="coTit">Corte</h2><span id="coSub">—</span></div>
+        <div class="stats">
+          <div class="st"><b id="coTotal">0</b><span>Total</span></div>
+          <div class="st"><b id="coHechas" style="color:var(--ok)">0</b><span>Listas</span></div>
+          <div class="st"><b id="coFaltan" style="color:var(--warn)">0</b><span>Faltan</span></div>
+        </div>
+        <div class="prog-grande">
+          <div class="pbar"><i id="coBarra" style="width:0%;background:var(--ok)"></i></div>
+          <b id="coPct">0%</b>
+        </div>
+      </div>
+      <div class="cab-bot">
+        <div class="buscar" style="flex:1 1 200px"><span class="lupa">🔍</span>
+          <input type="text" id="coBus" placeholder="Buscar por id, tipo, material, color o ducto…"></div>
+        <select class="filtro" id="coTipo"><option value="">Todos los tipos</option></select>
+        <select class="filtro" id="coMat"><option value="">Todos los materiales</option></select>
+        <div class="grupo-btn">
+          <button class="btn sm" data-est="todas">Todas</button>
+          <button class="btn sm on" data-est="faltan">Faltan</button>
+          <button class="btn sm" data-est="listas">Listas</button>
+        </div>
+        <button class="btn sm" id="coMarcarN">☑ Marcar N…</button>
+        <button class="btn sm peligro" id="coReiniciar">Reiniciar</button>
+        <button class="btn sm" id="coBloquear">🔒 Finalizar</button>
+      </div>
+    </div>
+    <div class="scroll"><div class="lista" id="coLista"></div></div>
+  </section>
+
+  <!-- ================= ENSAMBLE ================= -->
+  <section class="vista" id="vEns">
+    <div class="ens-cab">
+      <h2 id="enTit">Ensamble</h2>
+      <button class="btn-ops" id="enLista" title="Ver la lista completa de lienzos">📋</button>
+      <button class="btn-ops" id="enOpciones" title="Opciones">⚙</button>
+    </div>
+
+    <!-- Lista completa del proyecto: ocasional, se abre con 📋 y no es lo primero que se ve -->
+    <div class="ens-todo" id="enTodo" style="display:none">
+      <div class="et-cab">
+        <button class="btn pri-e" id="etVolver">← Volver al dibujo</button>
+        <div class="buscar" style="flex:1 1 200px"><span class="lupa">🔍</span>
+          <input type="text" id="etBus" placeholder="Buscar lienzo, ducto o pieza…"></div>
+        <div class="grupo-btn">
+          <button class="btn" data-etf="todos">Todos</button>
+          <button class="btn on" data-etf="faltan">Faltan</button>
+          <button class="btn" data-etf="listos">Listos</button>
+        </div>
+        <button class="btn" id="etMarcarN">☑ Marcar N…</button>
+        <div class="et-stats"><b id="etHechas">0</b><span>de</span><b id="etTotal">0</b></div>
+      </div>
+      <div class="scroll"><div class="et-lista" id="etLista"></div></div>
+    </div>
+
+    <div class="ens-cols" id="enCols">
+      <aside class="arbol" id="enArbol"></aside>
+      <div class="dibujo" id="enDibujo">
+        <div class="centro-msg" id="enVacio">
+          <div class="ic">👈</div>
+          <h3>Elige una pieza</h3>
+          <p>Toca un ducto y luego una pieza.</p>
+        </div>
+      </div>
+      <aside class="lienzo-panel" id="enPanel" style="display:none">
+        <div class="lp-cab"><h3 id="lpTit">—</h3><div class="meta" id="lpMeta">—</div></div>
+        <div class="lp-lista" id="lpLista"></div>
+        <div class="lp-pie">
+          <button class="btn pri-e xl" id="lpCompletar">PIEZA LISTA</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">
+  <span id="pieAlm" class="insignia med">Comprobando almacenamiento…</span>
+  <span id="pieSync" class="insignia med" style="display:none"></span>
+  <span class="guardado"><i class="punto" id="piePunto"></i><span id="pieGuardado">Sin cambios</span></span>
+  <span id="pieLib" style="margin-left:auto"></span>
+</footer>
+
+<div class="velo" id="veloCarga"><div class="modal" style="text-align:center">
+  <div style="font-size:2.2rem;line-height:1">⏳</div>
+  <h3 id="cargaTit">Descargando proyecto…</h3>
+  <p id="cargaTxt" style="margin:0">Espera un momento.</p>
+</div></div>
+
+<div class="velo" id="veloProy"><div class="modal modal-proy">
+  <h3>Elige el proyecto</h3>
+  <div class="proy-lista" id="proyLista"></div>
+  <div class="acc"><button class="btn" id="proyCerrar">Cancelar</button></div>
+</div></div>
+
+<div class="velo" id="velo"><div class="modal">
+  <h3 id="moTit">Título</h3><p id="moTxt">Texto</p>
+  <input type="text" id="moIn" style="display:none">
+  <div class="acc"><button class="btn" id="moNo">Cancelar</button><button class="btn pri" id="moSi">Aceptar</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<template id="tplFila">
+  <div class="fila"><div class="cuerpo"><div class="tit"></div><div class="sub"></div></div><div class="check">✓</div></div>
+</template>
+<template id="tplFilaAcc">
+  <div class="fila acc"><div class="cuerpo"><div class="tit"></div><div class="sub"></div></div>
+    <div class="cont"><button class="btn sm" data-d="-1">−</button><span class="num">0/0</span>
+      <button class="btn sm" data-d="1">+</button><button class="btn sm" data-d="all">Todas</button></div>
+  </div>
+</template>
+<template id="tplLienzo">
+  <div class="lz"><div class="ord">L1</div><div class="cu"><b></b><small></small></div><div class="check">✓</div></div>
+</template>
+
+<script>
+(function(){
+'use strict';
+
+/* ==================================================================
+   0. UTILIDADES
+   ================================================================== */
+var $  = function(s,r){ return (r||document).querySelector(s); };
+var $$ = function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+var SVGNS = 'http://www.w3.org/2000/svg';
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pct(a,b){ return b>0 ? Math.round(a*100/b) : 0; }
+function fmt(n,d){ return (n==null||isNaN(n))?'—':Number(n).toFixed(d==null?2:d); }
+
+var _toastT=null;
+function toast(msg,malo){
+  var t=$('#toast'); t.textContent=msg; t.className='toast on'+(malo?' mal':'');
+  clearTimeout(_toastT); _toastT=setTimeout(function(){ t.className='toast'; },2600);
+}
+function preguntar(o){
+  return new Promise(function(res){
+    $('#moTit').textContent=o.titulo||'Confirmar';
+    $('#moTxt').textContent=o.texto||'';
+    var inp=$('#moIn');
+    if(o.input){ inp.style.display='block'; inp.value=o.valor||''; inp.placeholder=o.placeholder||''; }
+    else inp.style.display='none';
+    $('#moSi').textContent=o.si||'Aceptar';
+    $('#moNo').textContent=o.no||'Cancelar';
+    $('#moSi').className='btn '+(o.peligro?'peligro':'pri');
+    $('#velo').classList.add('on');
+    if(o.input) setTimeout(function(){ inp.focus(); inp.select(); },40);
+    function cerrar(v){
+      $('#velo').classList.remove('on');
+      $('#moSi').onclick=null; $('#moNo').onclick=null; inp.onkeydown=null; $('#velo').onclick=null;
+      res(v);
+    }
+    // El botón secundario puede devolver un valor propio (o.noValor) para poder
+    // distinguirlo de cerrar el diálogo con Escape o tocando fuera, que siempre da null.
+    $('#moSi').onclick=function(){ cerrar(o.input?inp.value:true); };
+    $('#moNo').onclick=function(){ cerrar(o.noValor!==undefined?o.noValor:null); };
+    $('#velo').onclick=function(e){ if(e.target===$('#velo')) cerrar(null); };
+    inp.onkeydown=function(e){ if(e.key==='Enter') cerrar(inp.value); if(e.key==='Escape') cerrar(null); };
+  });
+}
+
+/* Hash 53 bits (cyrb53) -> base36. Identidad estable de cada item. */
+function hash53(str){
+  var h1=0xdeadbeef, h2=0x41c6ce57;
+  for(var i=0;i<str.length;i++){
+    var ch=str.charCodeAt(i);
+    h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677);
+  }
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+
+var COLORES={
+  'white':'#ffffff','blanco':'#ffffff','black':'#111827','negro':'#111827',
+  'gray':'#9ca3af','grey':'#9ca3af','gris':'#9ca3af','light gray':'#d1d5db','light grey':'#d1d5db',
+  'dark gray':'#4b5563','dark grey':'#4b5563','oxford gray':'#5b6472','pearl gray':'#cfd4da',
+  'blue':'#2563eb','azul':'#2563eb','dark blue':'#1e3a8a','light blue':'#7dd3fc',
+  'red':'#dc2626','rojo':'#dc2626','green':'#16a34a','verde':'#16a34a',
+  'yellow':'#facc15','amarillo':'#facc15','orange':'#f97316','naranja':'#f97316',
+  'purple':'#7c3aed','morado':'#7c3aed','beige':'#e7d8b8','ivory':'#fffff0'
+};
+function hexColor(n){ if(!n) return '#cbd5e1'; return COLORES[String(n).trim().toLowerCase()]||'#cbd5e1'; }
+
+/* Un color por lienzo, el MISMO en el dibujo y en la lista, para poder
+   emparejarlos de un vistazo. Sin rojos (es el contorno del ducto) ni verdes
+   (es el color de "ya está hecho"). */
+// Ordenados para que los primeros (los casos frecuentes, de 2 a 7 lienzos)
+// sean los más distintos entre sí.
+var COLORES_LZ=['#1d4ed8','#c2410c','#a21caf','#0891b2','#854d0e','#7c3aed','#be185d',
+                '#0f766e','#b45309','#4338ca','#075985','#9d174d','#3730a3','#6d28d9'];
+function colorLienzo(i){ return COLORES_LZ[i%COLORES_LZ.length]; }
+function tinte(hex,a){
+  var n=parseInt(hex.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+/* ==================================================================
+   1. ALMACEN  (sonda: IndexedDB -> localStorage -> memoria)
+   Chrome/Edge bloquean IndexedDB bajo file://, Firefox no.
+   El AVANCE siempre va a localStorage (es chico). La BIBLIOTECA es
+   lo grande y lo prescindible: si no hay IDB, vive solo en memoria.
+   ================================================================== */
+var PREF='dti:v1:';
+var Almacen=(function(){
+  var db=null, motor='mem', lsOK=false;
+
+  function probarLS(){
+    try{ localStorage.setItem(PREF+'p','1'); localStorage.removeItem(PREF+'p'); return true; }
+    catch(e){ return false; }
+  }
+  function abrir(){
+    return new Promise(function(res){
+      lsOK=probarLS();
+      var listo=false;
+      function fin(m){ if(!listo){ listo=true; motor=m; res(m); } }
+      var guarda=setTimeout(function(){ fin(lsOK?'ls':'mem'); },2000);
+      try{
+        if(!self.indexedDB){ clearTimeout(guarda); return fin(lsOK?'ls':'mem'); }
+        var req=indexedDB.open('dti_produccion',1);
+        req.onupgradeneeded=function(e){
+          var d=e.target.result;
+          if(!d.objectStoreNames.contains('proyectos')){
+            var s=d.createObjectStore('proyectos',{keyPath:'pk'});
+            s.createIndex('folio','folio',{unique:false});
+          }
+          // caché de lo descargado del sitio: permite trabajar sin red
+          if(!d.objectStoreNames.contains('cache')) d.createObjectStore('cache',{keyPath:'k'});
+        };
+        req.onsuccess=function(e){ clearTimeout(guarda); db=e.target.result; fin('idb'); };
+        req.onerror=function(){ clearTimeout(guarda); fin(lsOK?'ls':'mem'); };
+        req.onblocked=function(){ clearTimeout(guarda); fin(lsOK?'ls':'mem'); };
+      }catch(e){ clearTimeout(guarda); fin(lsOK?'ls':'mem'); }
+    });
+  }
+  function guardarProyecto(reg){
+    if(motor!=='idb') return Promise.resolve(false);
+    return new Promise(function(res){
+      try{
+        var tx=db.transaction('proyectos','readwrite');
+        tx.objectStore('proyectos').put(reg);
+        tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ res(false); };
+      }catch(e){ res(false); }
+    });
+  }
+  function borrarProyecto(pk){
+    if(motor!=='idb') return Promise.resolve();
+    return new Promise(function(res){
+      try{ var tx=db.transaction('proyectos','readwrite');
+        tx.objectStore('proyectos').delete(pk); tx.oncomplete=function(){res();}; tx.onerror=function(){res();};
+      }catch(e){ res(); }
+    });
+  }
+  function vaciarProyectos(){
+    if(motor!=='idb') return Promise.resolve();
+    return new Promise(function(res){
+      try{ var tx=db.transaction('proyectos','readwrite');
+        tx.objectStore('proyectos').clear(); tx.oncomplete=function(){res();}; tx.onerror=function(){res();};
+      }catch(e){ res(); }
+    });
+  }
+  function leerProyectos(){
+    if(motor!=='idb') return Promise.resolve([]);
+    return new Promise(function(res){
+      try{
+        var out=[], tx=db.transaction('proyectos','readonly');
+        tx.objectStore('proyectos').openCursor().onsuccess=function(e){
+          var c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out);
+        };
+        tx.onerror=function(){ res([]); };
+      }catch(e){ res([]); }
+    });
+  }
+  function getLS(k){ if(!lsOK) return null; try{ return localStorage.getItem(PREF+k); }catch(e){ return null; } }
+  function setLS(k,v){
+    if(!lsOK) return false;
+    try{ localStorage.setItem(PREF+k,v); return true; }
+    catch(e){ return false; }
+  }
+  function delLS(k){ if(!lsOK) return; try{ localStorage.removeItem(PREF+k); }catch(e){} }
+  function clavesLS(p){
+    if(!lsOK) return [];
+    var out=[]; try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(k && k.indexOf(PREF+p)===0) out.push(k.slice(PREF.length));
+      }
+    }catch(e){}
+    return out;
+  }
+  // Caché de los .json descargados del sitio: si la tableta se queda sin red,
+  // los proyectos que ya abrió siguen funcionando.
+  function guardarCache(folio,sha,texto){
+    if(motor!=='idb') return Promise.resolve(false);
+    return new Promise(function(res){
+      try{
+        var tx=db.transaction('cache','readwrite');
+        tx.objectStore('cache').put({k:folio+'@'+(sha||''), folio:folio, texto:texto, ts:Date.now()});
+        tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ res(false); };
+      }catch(e){ res(false); }
+    });
+  }
+  function leerCache(folio,sha){
+    if(motor!=='idb') return Promise.resolve(null);
+    return new Promise(function(res){
+      try{
+        var tx=db.transaction('cache','readonly');
+        var q=tx.objectStore('cache').get(folio+'@'+(sha||''));
+        q.onsuccess=function(){ res(q.result?q.result.texto:null); };
+        q.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  }
+  return { abrir:abrir, motor:function(){return motor;}, lsOK:function(){return lsOK;},
+           guardarProyecto:guardarProyecto, borrarProyecto:borrarProyecto, leerProyectos:leerProyectos,
+           vaciarProyectos:vaciarProyectos, getLS:getLS, setLS:setLS, delLS:delLS, clavesLS:clavesLS,
+           guardarCache:guardarCache, leerCache:leerCache };
+})();
+
+/* ==================================================================
+   2. NORMALIZADOR
+   Un solo modelo interno que alimenta a Corte y a Ensamble.
+   Clave de identidad SEMANTICA: S<sistema>|D<numero de ducto>|p<n>|L<n>.
+   Verificado sobre 3 versiones reales del mismo folio: 100% del avance
+   sobrevive a un re-export con cambios de medida y a insertar un ducto.
+   ================================================================== */
+var COSTURA_CM=1.0;   // Params.SEWING_WIDE del CAM: cada lienzo pierde 1 cm por lado
+
+function detectarFormato(j){
+  if(!j||typeof j!=='object') return 'desconocido';
+  if(Array.isArray(j)) return 'array';
+  if(Array.isArray(j.sistemas)) return 'jerarquico';
+  if(Array.isArray(j.Piezas)) return 'plano';
+  if(j.metadata&&Array.isArray(j.piezas)) return 'metadata';
+  return 'desconocido';
+}
+
+function normalizar(json,archivo){
+  var formato=detectarFormato(json);
+  var P={
+    formato:formato, archivo:archivo||'',
+    folio:(json&&json.numero_proyecto)||(json&&json.metadata&&json.metadata.folio)||
+          ((archivo||'').replace(/\.json$/i,'')||'SIN-FOLIO'),
+    cliente:(json&&json.cliente)||(json&&json.metadata&&json.metadata.cliente)||'—',
+    sistemas:[], corte:[], ensamble:[], accesorios:[],
+    jerarquico:formato==='jerarquico', avisos:[], formas:{}
+  };
+
+  if(formato==='jerarquico'){
+    (json.sistemas||[]).forEach(function(sis,si){
+      var S={id:(sis.id!=null?sis.id:si+1), idx:si, ductos:[], accesorios:[]};
+      (sis.ductos||[]).forEach(function(duc,di){
+        var D={
+          idx:di, sistemaIdx:si, sistemaId:S.id,
+          numero:duc.numero||('Ducto '+(di+1)),
+          forma:duc.forma||'circular',
+          perimetro_cm:(typeof duc.perimetro_cm==='number')?duc.perimetro_cm:null,
+          soportes:Array.isArray(duc.soportes)?duc.soportes:[],
+          piezas:[], total:0
+        };
+        D.grupoSop = D.soportes.length?D.soportes[0]:null;
+        D.horas = (D.grupoSop&&Array.isArray(D.grupoSop.horas))
+                  ? D.grupoSop.horas.filter(function(h){return typeof h==='number';}) : [];
+        D.largo_m = D.grupoSop?Number(D.grupoSop.largo_m):null;
+        D.cantSop = D.soportes.reduce(function(a,s){return a+(s.cantidad||0);},0);
+        D.diametro_cm = D.perimetro_cm?D.perimetro_cm/Math.PI:null;
+        P.formas[D.forma]=(P.formas[D.forma]||0)+1;
+
+        (duc.piezas||[]).forEach(function(pz,pi){
+          var PZ={
+            idx:pi, sistemaIdx:si, ductoIdx:di,
+            indice:(pz.indice!=null?pz.indice:pi+1),
+            letra:(pz.letra!=null?String(pz.letra):String(pi+1)),
+            largo_cm:(pz.largo_cm!=null?pz.largo_cm:null),
+            lienzos:[], ducto:D
+          };
+          PZ.nombre='Ducto '+D.numero+' · Pieza '+PZ.letra;
+          (pz.lienzos||[]).forEach(function(l,li){
+            var L={
+              sistemaIdx:si, ductoIdx:di, piezaIdx:pi, idx:li,
+              id:(l.id!=null?String(l.id):(PZ.nombre+' L'+(li+1))),
+              etiqueta:'L'+(li+1),
+              tipo:l.tipo||'Lienzo rectangular',
+              ancho_cm:(typeof l.ancho_cm==='number')?l.ancho_cm:0,
+              largo_cm:(typeof l.largo_cm==='number')?l.largo_cm:0,
+              material:l.material||null, color:l.color||null,
+              difusion:!!l.difusion,
+              num_difusiones:(l.num_difusiones!=null?l.num_difusiones:(l.difusion?1:0)),
+              horasDif:Array.isArray(l.difusiones_horas)?l.difusiones_horas:[],
+              esVena:(l.tipo==='Vena'),
+              ductoNum:D.numero, piezaLetra:PZ.letra, sistemaId:S.id, forma:D.forma,
+              ruta:'Ducto '+D.numero+' · Pieza '+PZ.letra, pieza:PZ
+            };
+            L.neto_cm = L.ancho_cm - 2*COSTURA_CM;
+            L.clave = hash53('L|'+P.folio+'|S'+S.id+'|D'+D.numero+'|p'+(pi+1)+'|L'+(li+1));
+            PZ.lienzos.push(L); P.corte.push(L); P.ensamble.push(L);
+            if(L.difusion && !L.horasDif.length)
+              P.avisos.push('Lienzo '+L.id+': marcado con difusión pero sin horas.');
+          });
+          if(!PZ.lienzos.length) P.avisos.push('Pieza '+PZ.nombre+': sin lienzos.');
+          // Control de integridad: suma de anchos netos == perimetro (CAM)
+          var suma=PZ.lienzos.reduce(function(a,l){return a+l.neto_cm;},0);
+          PZ.sumaNeta=suma;
+          PZ.cierra = (D.perimetro_cm!=null) && Math.abs(suma-D.perimetro_cm)<=0.05;
+          if(PZ.lienzos.length && D.perimetro_cm!=null && !PZ.cierra)
+            P.avisos.push('Pieza '+PZ.nombre+': la suma de anchos netos ('+fmt(suma)+' cm) no coincide con el perímetro ('+fmt(D.perimetro_cm)+' cm).');
+          D.total+=PZ.lienzos.length;
+          D.piezas.push(PZ);
+        });
+        S.ductos.push(D);
+      });
+      var nPorTipo={};
+      (sis.accesorios||[]).forEach(function(a,ai){
+        var A={
+          sistemaIdx:si, sistemaId:S.id, idx:ai,
+          id:(a.id!=null?String(a.id):('ACC-'+si+'-'+ai)),
+          tipo:a.tipo||'Accesorio',
+          cantidad:Math.max(1,a.cantidad||1),
+          material:a.material||null, color:a.color||null,
+          difusion:false, num_difusiones:0, horasDif:[],
+          esAccesorio:true
+        };
+        A.ruta='Sistema '+S.id;
+        // Igual que en los lienzos: la clave NO puede llevar dentro el id, porque
+        // el id del accesorio incluye las medidas ("RED A 85-55 100 CM") y un
+        // re-export con otra medida borraría el avance. Ordinal por (sistema, tipo).
+        nPorTipo[A.tipo]=(nPorTipo[A.tipo]||0)+1;
+        A.ordTipo=nPorTipo[A.tipo];
+        A.clave=hash53('A|'+P.folio+'|S'+S.id+'|'+A.tipo+'|#'+A.ordTipo);
+        S.accesorios.push(A); P.accesorios.push(A); P.corte.push(A);
+      });
+      P.sistemas.push(S);
+    });
+  }else{
+    var lista=[];
+    if(formato==='plano') lista=json.Piezas||[];
+    else if(formato==='metadata') lista=json.piezas||[];
+    else if(formato==='array') lista=json;
+    lista.forEach(function(p,i){
+      var o={
+        id:(p.id!=null?String(p.id):('Pieza '+(i+1))),
+        tipo:p.tipo||'Sin tipo', etiqueta:p.tipo||'Pieza',
+        ancho_cm:p.ancho_cm||0, largo_cm:p.largo_cm||0,
+        material:p.material||null, color:p.color||null,
+        difusion:!!p.difusion, num_difusiones:p.num_difusiones||0,
+        horasDif:Array.isArray(p.difusiones_horas)?p.difusiones_horas:[],
+        ruta:'—'
+      };
+      // el id NO es unico en este formato (verificado): se incluye la posicion
+      o.clave=hash53('P|'+P.folio+'|'+o.id+'|'+i);
+      P.corte.push(o);
+    });
+    P.avisos.push('Formato antiguo sin la jerarquía sistemas → ductos → piezas → lienzos: '+
+                  'el módulo de Ensamble no puede dibujar este proyecto. Corte funciona normal.');
+  }
+
+  P.conteos={
+    sistemas:P.sistemas.length,
+    ductos:P.sistemas.reduce(function(a,s){return a+s.ductos.length;},0),
+    piezas:P.sistemas.reduce(function(a,s){return a+s.ductos.reduce(function(b,d){return b+d.piezas.length;},0);},0),
+    lienzos:P.ensamble.length,
+    accesorios:P.accesorios.length,
+    unidadesAcc:P.accesorios.reduce(function(a,x){return a+x.cantidad;},0),
+    corte:P.corte.length
+  };
+  P.sinSoportes=P.sistemas.reduce(function(a,s){
+    return a+s.ductos.filter(function(d){return !d.horas.length;}).length;},0);
+  return P;
+}
+
+/* ==================================================================
+   3. GEOMETRIA DEL CORTE TRANSVERSAL
+   Convenciones verificadas contra el codigo del CAM y los 98 JSON:
+     - perimetro_cm == suma(ancho_cm - 2)           [1833/1833 piezas]
+     - semicircular: P = r(pi+2)                    [D = 36.00" exacto]
+     - hora -> punto: formas cerradas = angulo parametrico phi = h*30
+                      formas con lado plano = fraccion de lado (6 horas/lado)
+     - el desdoblado arranca en soportes[0].horas[0], sentido HORARIO
+   ================================================================== */
+var CX=300, CY=300, RBOX=200;
+
+function perimElipse(a,b){
+  var h=Math.pow(a-b,2)/Math.pow(a+b,2);
+  return Math.PI*(a+b)*(1+(3*h)/(10+Math.sqrt(4-3*h)));
+}
+function clasificarForma(forma){
+  var f=String(forma==null?'circular':forma).toLowerCase();
+  if(f.indexOf('semicircular')>=0) return 'semicircular';
+  if(f.indexOf('1/2')>=0||f.indexOf('media')>=0) return 'media-elipse';
+  if(f.indexOf('elip')>=0||f.indexOf('elíp')>=0) return 'eliptica';
+  return 'circular';
+}
+var NOMBRE_FORMA={circular:'Circular','semicircular':'Semicircular','media-elipse':'Media elipse','eliptica':'Elíptica'};
+
+function buildOutline(forma,perimetroCm,opts){
+  opts=opts||{};
+  var N=opts.N||1440, k=opts.aspecto||2;
+  var tipo=clasificarForma(forma);
+  var P=(perimetroCm>0)?perimetroCm:100;
+  var raw=[], esquematico=false, partida=false, nArco=0, dims={};
+
+  if(tipo==='circular'||tipo==='eliptica'){
+    var a,b;
+    if(tipo==='circular'){ a=b=P/(2*Math.PI); }
+    else{
+      esquematico=true;
+      var lo=1e-9,hi=P;
+      for(var i0=0;i0<100;i0++){ var am=(lo+hi)/2; if(perimElipse(am,am/k)<P) lo=am; else hi=am; }
+      a=(lo+hi)/2; b=a/k;
+    }
+    dims={a:a,b:b,r:a};
+    for(var i=0;i<N;i++){
+      var phi=(i/N)*2*Math.PI;
+      raw.push([a*Math.sin(phi), -b*Math.cos(phi)]);   // phi=0 en la hora 12, horario
+    }
+  }else{
+    partida=true;
+    var A,B;
+    if(tipo==='semicircular'){ A=P/(Math.PI+2); B=A; }
+    else{
+      esquematico=true;
+      var l2=1e-9,h2=P;
+      for(var i1=0;i1<100;i1++){ var aa=(l2+h2)/2; if(perimElipse(aa,aa/k)/2+2*aa<P) l2=aa; else h2=aa; }
+      A=(l2+h2)/2; B=A/k;
+    }
+    dims={a:A,b:B,r:A,cuerda:2*A};
+    var arcoCm=(tipo==='semicircular')?Math.PI*A:perimElipse(A,B)/2;
+    var planoCm=2*A;
+    nArco=Math.max(24,Math.round(N*arcoCm/(arcoCm+planoCm))); nArco-=nArco%6;
+    for(var j=0;j<=nArco;j++){
+      var th=(j/nArco)*Math.PI;                        // hora 3 -> hora 9 por el lado curvo
+      raw.push([A*Math.cos(th), B*Math.sin(th)]);
+    }
+    var nPl=Math.max(12,N-nArco); nPl-=nPl%6;
+    for(var m=1;m<nPl;m++) raw.push([-A+2*A*(m/nPl),0]);   // lado plano arriba, hora 9 -> 3
+  }
+
+  var minx=Infinity,maxx=-Infinity,miny=Infinity,maxy=-Infinity;
+  for(var q=0;q<raw.length;q++){
+    if(raw[q][0]<minx)minx=raw[q][0]; if(raw[q][0]>maxx)maxx=raw[q][0];
+    if(raw[q][1]<miny)miny=raw[q][1]; if(raw[q][1]>maxy)maxy=raw[q][1];
+  }
+  var escala=(2*RBOX)/Math.max(maxx-minx,maxy-miny);
+  var ox=(minx+maxx)/2, oy=(miny+maxy)/2;
+  var pts=raw.map(function(p){ return [CX+(p[0]-ox)*escala, CY+(p[1]-oy)*escala]; });
+
+  var cum=[0];
+  for(var s=1;s<=pts.length;s++){
+    var Aq=pts[s-1],Bq=pts[s%pts.length];
+    cum.push(cum[s-1]+Math.hypot(Bq[0]-Aq[0],Bq[1]-Aq[1]));
+  }
+  var total=cum[cum.length-1];
+  var arcoPx=partida?cum[nArco]:total, planoPx=total-arcoPx;
+
+  function pointAtFraction(t){
+    t=((t%1)+1)%1;
+    var obj=t*total, lo=0, hi=cum.length-1;
+    while(lo<hi-1){ var mid=(lo+hi)>>1; if(cum[mid]<=obj) lo=mid; else hi=mid; }
+    var seg=cum[lo+1]-cum[lo], u=seg>0?(obj-cum[lo])/seg:0;
+    var Ap=pts[lo%pts.length], Bp=pts[(lo+1)%pts.length];
+    var dx=Bp[0]-Ap[0], dy=Bp[1]-Ap[1], L=Math.hypot(dx,dy)||1;
+    return {x:Ap[0]+dx*u, y:Ap[1]+dy*u, tx:dx/L, ty:dy/L, nx:dy/L, ny:-dx/L, t:t};
+  }
+  var _c=null;
+  function centro(){
+    if(_c) return _c;
+    var A2=0,Sx=0,Sy=0;
+    for(var i=0;i<pts.length;i++){
+      var p0=pts[i],p1=pts[(i+1)%pts.length];
+      var cr=p0[0]*p1[1]-p1[0]*p0[1];
+      A2+=cr; Sx+=(p0[0]+p1[0])*cr; Sy+=(p0[1]+p1[1])*cr;
+    }
+    A2*=0.5;
+    _c=(Math.abs(A2)<1e-9)?{x:CX,y:CY}:{x:Sx/(6*A2),y:Sy/(6*A2)};
+    return _c;
+  }
+  function fractionAtHour(h){
+    h=((h%12)+12)%12;
+    if(!partida) return h/12;
+    if(h>=3&&h<=9) return (((h-3)/6)*arcoPx)/total;
+    var u=(h>9)?(h-9)/6:(h+3)/6;
+    return (arcoPx+u*planoPx)/total;
+  }
+  function pointAtHour(h){
+    var t=fractionAtHour(h);
+    var p=pointAtFraction(t);
+    var hh=((h%12)+12)%12;
+    p.hora=h; p.enPlano=partida&&!(hh>=3&&hh<=9);
+    var c=centro();
+    // En las esquinas de una forma partida (unión arco/plano) la normal del segmento
+    // es ambigua y salía distinta a las 9 que a las 3 siendo la misma esquina:
+    // ahí se usa la dirección radial desde el centroide.
+    var esquina = partida && (Math.min(t,1-t)<1e-6 || Math.abs(t-arcoPx/total)<1e-6);
+    if(esquina){
+      var dx=p.x-c.x, dy=p.y-c.y, L=Math.hypot(dx,dy)||1;
+      p.nx=dx/L; p.ny=dy/L;
+    }else if((p.x-c.x)*p.nx+(p.y-c.y)*p.ny<0){ p.nx=-p.nx; p.ny=-p.ny; }
+    return p;
+  }
+  var d='M '+pts.map(function(p){return p[0].toFixed(2)+' '+p[1].toFixed(2);}).join(' L ')+' Z';
+  return {tipo:tipo, pts:pts, cum:cum, total:total, d:d, escala:escala, dims:dims,
+          esquematico:esquematico, partida:partida, arcoPx:arcoPx, planoPx:planoPx,
+          pointAtFraction:pointAtFraction, fractionAtHour:fractionAtHour, pointAtHour:pointAtHour,
+          centro:centro, perimetroCm:P};
+}
+
+/* ==================================================================
+   3.5 SINCRONIZACION ENTRE TABLETAS
+   GitHub Pages es estatico, asi que el avance compartido vive en un
+   Worker de Cloudflare. El estado LOCAL manda siempre: marcar nunca
+   espera a la red. Los cambios se envian agrupados como deltas
+   (add/del), de forma que dos tabletas que marcan cosas distintas
+   no se pisan. Si no hay red la app sigue funcionando y lo dice.
+   ================================================================== */
+var URL_SYNC='__URL_SINCRONIZACION__';   // el programa de subida la sustituye
+var MODO_WEB=(location.protocol==='http:'||location.protocol==='https:');
+
+var Sync=(function(){
+  var base=/^https?:\/\//.test(URL_SYNC)?URL_SYNC.replace(/\/+$/,''):null;
+  var estado=base?'probando':'apagado';   // apagado | probando | ok | sin-red
+  var tid=null, ultima=0, idCliente=null;
+
+  function cliente(){
+    if(idCliente) return idCliente;
+    idCliente=Almacen.getLS('tableta');
+    if(!idCliente){
+      idCliente='t-'+hash53(String(navigator.userAgent)+'|'+(performance.now()|0)+'|'+screen.width);
+      Almacen.setLS('tableta',idCliente);
+    }
+    return idCliente;
+  }
+  function pintar(){
+    var b=$('#pieSync'); if(!b) return;
+    if(estado==='apagado'){ b.style.display='none'; return; }
+    b.style.display='inline-flex';
+    if(estado==='ok'){ b.className='insignia ok'; b.textContent='🔄 Avance compartido'; }
+    else if(estado==='probando'){ b.className='insignia med'; b.textContent='🔄 Conectando…'; }
+    else{ b.className='insignia mal'; b.textContent='📵 Sin conexión · sólo esta tableta'; }
+  }
+  function marcarEstado(e){ if(estado!==e){ estado=e; pintar(); } }
+
+  function pedir(ruta,opciones){
+    if(!base) return Promise.reject(new Error('sin servicio'));
+    var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+    var t=setTimeout(function(){ if(ctrl) ctrl.abort(); },8000);
+    return fetch(base+ruta,Object.assign({signal:ctrl?ctrl.signal:undefined},opciones||{}))
+      .then(function(r){
+        clearTimeout(t);
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      })
+      .then(function(j){ marcarEstado('ok'); ultima=Date.now(); return j; })
+      .catch(function(e){ clearTimeout(t); marcarEstado('sin-red'); throw e; });
+  }
+  function traer(folio,mod){
+    return pedir('/p?f='+encodeURIComponent(folio)+'&m='+encodeURIComponent(mod));
+  }
+  function empujar(folio,mod,delta){
+    var cuerpo=Object.assign({f:folio,m:mod,cli:cliente()},delta);
+    return pedir('/p',{method:'POST',headers:{'Content-Type':'application/json'},
+                       body:JSON.stringify(cuerpo)});
+  }
+  function arrancar(){
+    if(!base) { pintar(); return; }
+    pintar();
+    pedir('/salud').catch(function(){});
+  }
+  return {activo:function(){return !!base;}, estado:function(){return estado;},
+          traer:traer, empujar:empujar, arrancar:arrancar, pintar:pintar,
+          cliente:cliente};
+})();
+
+/* ==================================================================
+   4. PROGRESO  (por folio y por modulo, independientes)
+   ================================================================== */
+var Prog=(function(){
+  var cache={}, sucio={}, temporizador=null;
+
+  function ck(mod,folio){ return 'prog:'+mod+':'+folio; }
+  function cargar(mod,folio){
+    var k=ck(mod,folio);
+    if(cache[k]) return cache[k];
+    var est={marcados:{}, acc:{}, bloq:false, n:0, quitados:{}};
+    var raw=Almacen.getLS(k);
+    if(raw){
+      try{
+        var o=JSON.parse(raw);
+        if(o&&o.v===1){
+          (o.m||[]).forEach(function(c){ est.marcados[c]=1; est.n++; });
+          est.acc=o.a||{}; est.bloq=!!o.b;
+        }
+      }catch(e){}
+    }
+    cache[k]=est; return est;
+  }
+  function serial(est){
+    var m=[]; for(var c in est.marcados) if(est.marcados[c]) m.push(c);
+    return JSON.stringify({v:1,t:Date.now(),b:est.bloq,m:m,a:est.acc});
+  }
+  function marcarSucio(mod,folio){
+    sucio[ck(mod,folio)]=1;
+    $('#piePunto').classList.add('sucio');
+    $('#pieGuardado').textContent='Guardando…';
+    if(temporizador) return;
+    temporizador=setTimeout(function(){ temporizador=null; volcar(); },350);
+  }
+  // Funde lo que haya en disco con lo que tenemos en memoria antes de escribir, para
+  // que dos ventanas abiertas del mismo folio no se borren el avance entre sí. Lo que
+  // el operador desmarcó a propósito se respeta vía `quitados`, si no un desmarcado
+  // volvería a aparecer en el siguiente guardado.
+  function fundir(k,est){
+    var raw=Almacen.getLS(k);
+    if(!raw) return est;
+    try{
+      var o=JSON.parse(raw); if(!o||o.v!==1) return est;
+      (o.m||[]).forEach(function(c){
+        if(!est.marcados[c] && !est.quitados[c]){ est.marcados[c]=1; est.n++; }
+      });
+      var a=o.a||{};
+      for(var c2 in a) if(!est.quitados[c2]) est.acc[c2]=Math.max(est.acc[c2]||0, a[c2]);
+      est.bloq=est.bloq||!!o.b;
+    }catch(e){}
+    return est;
+  }
+  function volcar(){
+    var fallo=false, hubo=false;
+    for(var k in sucio){
+      if(!sucio[k]) continue;
+      hubo=true;
+      if(!Almacen.setLS(k,serial(fundir(k,cache[k])))) fallo=true;
+      else cache[k].quitados={};          // ya está en disco: los desmarcados cuajaron
+      sucio[k]=0;
+    }
+    if(!hubo) return;
+    $('#piePunto').classList.remove('sucio');
+    if(fallo){
+      $('#pieGuardado').textContent='NO se pudo guardar';
+      toast('No se pudo guardar el avance: almacenamiento lleno. Exporta un respaldo.',true);
+    }else{
+      var d=new Date();
+      $('#pieGuardado').textContent='Guardado '+String(d.getHours()).padStart(2,'0')+':'+
+        String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+    }
+    programarEmpuje();
+  }
+  function limpiar(mod,folio){
+    var k=ck(mod,folio);
+    cache[k]={marcados:{},acc:{},bloq:false,n:0,quitados:{}};
+    Almacen.delLS(k); sucio[k]=0;
+    if(Sync.activo()){ programarEmpuje(); }   // el delta borrara lo del servidor
+  }
+  function resumen(P){
+    var r={};
+    ['corte','ensamble'].forEach(function(mod){
+      var est=cargar(mod,P.folio), hechas=0;
+      if(mod==='corte'){
+        P.corte.forEach(function(it){
+          if(it.esAccesorio) hechas+=Math.min(est.acc[it.clave]||0,it.cantidad);
+          else if(est.marcados[it.clave]) hechas++;
+        });
+        r.corte={hechas:hechas,total:totalCorte(P),bloq:est.bloq};
+      }else{
+        P.ensamble.forEach(function(it){ if(est.marcados[it.clave]) hechas++; });
+        r.ensamble={hechas:hechas,total:P.ensamble.length,bloq:est.bloq};
+      }
+    });
+    return r;
+  }
+  /* ---------- sincronización con el servicio compartido ----------
+     `remoto[k]` es lo que sabemos que hay en el servidor. El delta que
+     enviamos es la diferencia contra eso, no el estado completo: así dos
+     tabletas que marcan cosas distintas no se borran entre sí. */
+  var remoto={}, tRemoto=null, enviando={}, reintentos={};
+
+  function claveDoc(k){ var p=k.split(':'); return {mod:p[1], folio:p.slice(2).join(':')}; }
+  function copia(o){ var r={}; for(var x in o) r[x]=o[x]; return r; }
+
+  function delta(k){
+    var est=cache[k]; if(!est) return null;
+    var ant=remoto[k]||{m:{},a:{},bloq:false};
+    var add=[], del=[], acc={}, hay=false;
+    for(var c in est.marcados) if(!ant.m[c]){ add.push(c); hay=true; }
+    for(var c2 in ant.m) if(!est.marcados[c2]){ del.push(c2); hay=true; }
+    for(var c3 in est.acc) if(ant.a[c3]!==est.acc[c3]){ acc[c3]=est.acc[c3]; hay=true; }
+    for(var c4 in ant.a) if(est.acc[c4]===undefined){ acc[c4]=0; hay=true; }
+    var d={add:add,del:del,a:acc};
+    if(est.bloq!==!!ant.bloq){ d.bloq=est.bloq; hay=true; }
+    return hay?d:null;
+  }
+
+  // Funde lo que devuelve el servidor con lo que tenemos. Nuestras marcas sin
+  // enviar mandan; lo que el operador quitó a propósito no reaparece.
+  function fusionarRemoto(k,doc){
+    var est=cache[k]; if(!est||!doc) return false;
+    var ant=remoto[k]||{m:{},a:{},bloq:false};
+    var srv={}; (doc.m||[]).forEach(function(c){ srv[c]=1; });
+    var cambio=false, pendiente=!!sucio[k];
+    for(var c in srv) if(!est.marcados[c] && !est.quitados[c]){ est.marcados[c]=1; est.n++; cambio=true; }
+    if(!pendiente){
+      for(var c2 in est.marcados)
+        if(!srv[c2] && ant.m[c2]){ delete est.marcados[c2]; est.n--; cambio=true; }
+    }
+    var sa=doc.a||{};
+    for(var c3 in sa) if(est.acc[c3]!==sa[c3] && ant.a[c3]===est.acc[c3]){
+      if(sa[c3]>0) est.acc[c3]=sa[c3]; else delete est.acc[c3];
+      cambio=true;
+    }
+    if(!!doc.bloq!==!!ant.bloq){ est.bloq=!!doc.bloq; cambio=true; }
+    remoto[k]={m:srv, a:copia(sa), bloq:!!doc.bloq, rev:doc.rev||0};
+    return cambio;
+  }
+
+  // Trae el documento del servidor y lo funde. Se usa al abrir un proyecto y
+  // luego cada pocos segundos mientras la vista está abierta.
+  function sincronizar(mod,folio,alFundir){
+    if(!Sync.activo()) return Promise.resolve(false);
+    var k=ck(mod,folio);
+    cargar(mod,folio);
+    return Sync.traer(folio,mod).then(function(doc){
+      var cambio=fusionarRemoto(k,doc);
+      if(cambio){ Almacen.setLS(k,serial(cache[k])); if(alFundir) alFundir(); }
+      return cambio;
+    }).catch(function(){ return false; });
+  }
+
+  function empujar(){
+    tRemoto=null;
+    if(!Sync.activo()) return;
+    Object.keys(cache).forEach(function(k){
+      if(enviando[k]) return;
+      var d=delta(k); if(!d) return;
+      var cd=claveDoc(k); if(!cd.folio) return;
+      enviando[k]=1;
+      Sync.empujar(cd.folio,cd.mod,d)
+        .then(function(doc){
+          enviando[k]=0;
+          fusionarRemoto(k,doc);
+          Almacen.setLS(k,serial(cache[k]));
+          /* KV es eventualmente consistente: si dos tabletas escriben a la vez,
+             un lote puede perderse. Si al fundir la respuesta el delta SIGUE
+             teniendo cosas, el servidor no recibió todo y se reintenta. Con
+             tope, para no quedarnos en un bucle si algo se rechaza siempre. */
+          if(delta(k)){
+            reintentos[k]=(reintentos[k]||0)+1;
+            if(reintentos[k]<=5) programarEmpuje();
+            else console.warn('Sincronización: se deja de reintentar',k,
+                              '— el avance sigue guardado en esta tableta.');
+          }else reintentos[k]=0;
+        })
+        .catch(function(){
+          enviando[k]=0;
+          // se reintenta solo en el siguiente volcado; el delta se recalcula
+          if(!tRemoto) tRemoto=setTimeout(empujar,15000);
+        });
+    });
+  }
+  function programarEmpuje(){
+    if(!Sync.activo()||tRemoto) return;
+    tRemoto=setTimeout(empujar,4000);     // agrupado: el plan gratuito limita escrituras
+  }
+
+  // Avance de un proyecto que todavía NO se ha descargado: se calcula con los
+  // totales del manifiesto, sin necesitar el .json completo.
+  function resumenFicha(folio,conteos,jerarquico){
+    conteos=conteos||{};
+    var ec=cargar('corte',folio), hc=0;
+    for(var c in ec.marcados) if(ec.marcados[c]) hc++;
+    for(var a in ec.acc) hc+=(ec.acc[a]||0);
+    var ee=cargar('ensamble',folio), he=0;
+    for(var c2 in ee.marcados) if(ee.marcados[c2]) he++;
+    var tc=conteos.corte||0, te=jerarquico?(conteos.lienzos||0):0;
+    return {
+      corte:{hechas:Math.min(hc,tc||hc), total:tc, bloq:ec.bloq},
+      ensamble:{hechas:jerarquico?Math.min(he,te||he):0, total:te, bloq:ee.bloq}
+    };
+  }
+
+  // Restaura un registro importado directamente en el estado vivo, aunque no
+  // haya almacenamiento donde escribirlo.
+  function adoptar(k,raw){
+    try{
+      var o=JSON.parse(raw); if(!o||o.v!==1) return;
+      var est={marcados:{},acc:o.a||{},bloq:!!o.b,n:0,quitados:{}};
+      (o.m||[]).forEach(function(c){ est.marcados[c]=1; est.n++; });
+      cache[k]=est;
+    }catch(e){}
+  }
+  window.addEventListener('pagehide',function(){ volcar(); empujar(); });
+  document.addEventListener('visibilitychange',function(){ if(document.hidden) volcar(); });
+  // Otra ventana de la misma app guardó: recargamos esa clave y repintamos.
+  window.addEventListener('storage',function(e){
+    if(!e.key||e.key.indexOf(PREF+'prog:')!==0) return;
+    var k=e.key.slice(PREF.length);
+    if(sucio[k]) return;                 // tenemos cambios sin escribir: los nuestros mandan
+    delete cache[k];
+    if(typeof onCambioExterno==='function') onCambioExterno(k);
+  });
+  return {cargar:cargar, marcarSucio:marcarSucio, volcar:volcar, limpiar:limpiar, resumen:resumen,
+          serial:serial, adoptar:adoptar, cache:cache, resumenFicha:resumenFicha,
+          sincronizar:sincronizar, empujar:empujar, ck:ck};
+})();
+
+function totalCorte(P){
+  var t=0;
+  P.corte.forEach(function(it){ t += it.esAccesorio?it.cantidad:1; });
+  return t;
+}
+
+/* ==================================================================
+   5. ESTADO GLOBAL
+   ================================================================== */
+var LIB=[];          // {pk, folio, cliente, archivo, bytes, crudo, P}
+var actual=null;     // proyecto normalizado activo
+var vistaActual='carga';
+
+function libPorFolio(folio){
+  for(var i=0;i<LIB.length;i++) if(LIB[i].folio===folio) return LIB[i];
+  return null;
+}
+function setActual(reg){
+  if(reg&&!reg.P){ console.warn('setActual con un proyecto sin descargar:',reg.folio); }
+  actual=reg?reg.P:null;
+  $('#tabCorte').disabled=!actual;
+  $('#tabEns').disabled=!actual||!actual.jerarquico;
+  $('#proyActivo').style.display=actual?'flex':'none';
+  $('#spFolio').textContent=actual?actual.folio:'Sin proyecto';
+  $('#spCliente').textContent=actual?actual.cliente
+    :(LIB.length?'Toca para elegir':'Carga archivos con 📂');
+  actualizarMiniProg();
+}
+function actualizarMiniProg(){
+  if(!actual) return;
+  var r=Prog.resumen(actual);
+  $('#paCorte').textContent=pct(r.corte.hechas,r.corte.total)+'%';
+  $('#paEns').textContent=actual.jerarquico?(pct(r.ensamble.hechas,r.ensamble.total)+'%'):'—';
+}
+
+/* ==================================================================
+   6. NAVEGACION
+   ================================================================== */
+function ir(v,opts){
+  if(v==='corte'&&!actual) return;
+  if(v==='ensamble'&&(!actual||!actual.jerarquico)) return;
+  vistaActual=v;
+  $$('.vista').forEach(function(s){ s.classList.remove('on'); });
+  $$('.mod,.btn-ic').forEach(function(t){ t.classList.remove('on'); });
+  ({carga:'#vCarga',corte:'#vCorte',ensamble:'#vEns'})[v] &&
+    $(({carga:'#vCarga',corte:'#vCorte',ensamble:'#vEns'})[v]).classList.add('on');
+  $(({carga:'#tabCarga',corte:'#tabCorte',ensamble:'#tabEns'})[v]).classList.add('on');
+  try{
+    var nuevo='#/'+v+(actual&&v!=='carga'?('/'+encodeURIComponent(actual.folio)):'');
+    if(location.hash!==nuevo){ ignorarHash=true; location.hash=nuevo; }
+  }catch(e){}
+  if(v==='carga') pintarBiblioteca();
+  if(v==='corte') Corte.abrir(actual);
+  if(v==='ensamble') Ens.abrir(actual,opts);
+  if(actual&&(v==='corte'||v==='ensamble')&&Sync.activo()){
+    Prog.sincronizar(v,actual.folio,function(){
+      if(vistaActual==='corte') Corte.abrir(actual);
+      else if(vistaActual==='ensamble') Ens.abrir(actual);
+      actualizarMiniProg();
+    });
+  }
+}
+$$('[data-ir]').forEach(function(t){ t.onclick=function(){ ir(t.dataset.ir); }; });
+
+/* ---- selector de proyecto de la barra superior ---- */
+function abrirSelectorProyecto(){
+  if(!LIB.length){ toast('No hay proyectos cargados. Usa 📂 para cargarlos.',true); ir('carga'); return; }
+  var cont=$('#proyLista'); cont.innerHTML='';
+  LIB.forEach(function(r){
+    var res=Prog.resumenFicha(r.folio,r.conteos,r.jerarquico);
+    var b=document.createElement('button');
+    b.className='proy-op'+(actual&&actual.folio===r.folio?' on':'');
+    b.innerHTML='<span class="pi"><b>'+esc(r.folio)+'</b><span>'+esc(r.cliente)+'</span></span>'+
+      '<span class="pp"><span class="mp c"><i></i>'+pct(res.corte.hechas,res.corte.total)+'%</span>'+
+      '<span class="mp e"><i></i>'+(r.jerarquico?pct(res.ensamble.hechas,res.ensamble.total)+'%':'—')+'</span></span>';
+    b.onclick=function(){
+      $('#veloProy').classList.remove('on');
+      // se queda en el mismo módulo si el proyecto lo admite
+      var v=(vistaActual==='ensamble'&&!r.jerarquico)?'corte':vistaActual;
+      abrirProyecto(r, v==='carga'?'corte':v);
+    };
+    cont.appendChild(b);
+  });
+  $('#veloProy').classList.add('on');
+}
+$('#selProy').onclick=abrirSelectorProyecto;
+$('#proyCerrar').onclick=function(){ $('#veloProy').classList.remove('on'); };
+$('#veloProy').onclick=function(e){ if(e.target===$('#veloProy')) $('#veloProy').classList.remove('on'); };
+
+// El botón Atrás del navegador debe cambiar la vista, no sólo la URL.
+var ignorarHash=false;
+window.addEventListener('hashchange',function(){
+  if(ignorarHash){ ignorarHash=false; return; }
+  var h=(location.hash||'').replace(/^#\//,'').split('/');
+  if(!h[0]) return;
+  if(h[1]){
+    var r=libPorFolio(decodeURIComponent(h[1]));
+    if(!r){ toast('El folio '+decodeURIComponent(h[1])+' ya no está en la biblioteca',true); ir('carga'); return; }
+    if(!actual||actual.folio!==r.folio){ abrirProyecto(r,h[0]); return; }
+  }
+  if(h[0]!==vistaActual) ir(h[0]);
+});
+
+// Repinta la vista abierta cuando otra ventana modificó el avance de este folio.
+function onCambioExterno(k){
+  if(!actual) return;
+  if(k.indexOf(':'+actual.folio)<0) return;
+  if(vistaActual==='corte'||vistaActual==='ensamble') ir(vistaActual);
+  else pintarBiblioteca();
+  actualizarMiniProg();
+  toast('Otra ventana actualizó el avance de '+actual.folio);
+}
+
+/* ==================================================================
+   7. CARGA DE ARCHIVOS
+   ================================================================== */
+function leerTexto(file){
+  return new Promise(function(res,rej){
+    var fr=new FileReader();
+    fr.onload=function(){ res(fr.result); };
+    fr.onerror=function(){ rej(new Error('No se pudo leer '+file.name)); };
+    fr.readAsText(file);
+  });
+}
+
+async function ingerir(files){
+  var jsons=Array.prototype.slice.call(files).filter(function(f){
+    return /\.json$/i.test(f.name); });
+  if(!jsons.length){ toast('No se encontraron archivos .json',true); return; }
+
+  var nuevos=0, reempl=0, malos=[], reabrir=null;
+  for(var i=0;i<jsons.length;i++){
+    var f=jsons[i];
+    try{
+      var txt=await leerTexto(f);
+      var j=JSON.parse(txt);
+      var P=normalizar(j,f.name);
+      if(P.formato==='desconocido'){ malos.push(f.name+' (formato no reconocido)'); continue; }
+      var reg={pk:P.folio, folio:P.folio, cliente:P.cliente, archivo:f.name, nombre:f.name,
+               ruta:f.webkitRelativePath||f.name, bytes:f.size, cargado:Date.now(), crudo:txt, P:P,
+               conteos:P.conteos, jerarquico:P.jerarquico, remoto:false};
+      var ya=libPorFolio(P.folio);
+      if(ya){
+        LIB[LIB.indexOf(ya)]=reg; reempl++;
+        // si es el proyecto abierto, hay que re-apuntarlo o las pestañas
+        // seguirían sirviendo las medidas de la versión anterior
+        if(actual&&actual.folio===P.folio) reabrir=reg;
+      }
+      else { LIB.push(reg); nuevos++; }
+      await Almacen.guardarProyecto({pk:reg.pk,folio:reg.folio,cliente:reg.cliente,archivo:reg.archivo,
+        ruta:reg.ruta,bytes:reg.bytes,cargado:reg.cargado,crudo:txt});
+    }catch(e){ malos.push(f.name+' ('+e.message+')'); }
+  }
+  LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
+  if(reabrir){ setActual(reabrir); if(vistaActual!=='carga') ir(vistaActual); }
+  pintarBiblioteca();
+  var msg=nuevos+' proyecto(s) cargado(s)';
+  if(reempl) msg+=', '+reempl+' actualizado(s)';
+  if(malos.length) msg+=' · '+malos.length+' con error';
+  toast(msg, malos.length>0);
+  if(malos.length){
+    console.warn('Archivos con error:\n'+malos.join('\n'));
+    ultimosErrores=malos.slice();
+    pintarErrores();
+  }
+}
+
+$('#btnArchivos').onclick=function(){ $('#inArchivos').click(); };
+$('#btnCarpeta').onclick=function(){ $('#inCarpeta').click(); };
+$('#inArchivos').onchange=function(e){ ingerir(e.target.files); e.target.value=''; };
+$('#inCarpeta').onchange=function(e){ ingerir(e.target.files); e.target.value=''; };
+
+(function(){
+  var z=$('#soltar'), cnt=0;
+  ['dragenter','dragover'].forEach(function(ev){
+    document.addEventListener(ev,function(e){ e.preventDefault(); if(ev==='dragenter'&&++cnt) z.classList.add('activo'); });
+  });
+  document.addEventListener('dragleave',function(e){ e.preventDefault(); if(--cnt<=0){ cnt=0; z.classList.remove('activo'); } });
+  document.addEventListener('drop',async function(e){
+    e.preventDefault(); cnt=0; z.classList.remove('activo');
+    if(vistaActual!=='carga') ir('carga');
+    var dt=e.dataTransfer;
+    var items=dt.items?Array.prototype.slice.call(dt.items):[];
+    var entradas=items.map(function(it){ return it.webkitGetAsEntry?it.webkitGetAsEntry():null; }).filter(Boolean);
+    if(entradas.length && entradas.some(function(en){ return en.isDirectory; })){
+      var files=[];
+      await Promise.all(entradas.map(function(en){ return recorrer(en,files); }));
+      ingerir(files);
+    } else ingerir(dt.files);
+  });
+  function recorrer(entry,out){
+    return new Promise(function(res){
+      if(entry.isFile){ entry.file(function(f){ out.push(f); res(); }, function(){ res(); }); }
+      else if(entry.isDirectory){
+        var rd=entry.createReader(), todo=[];
+        (function leer(){
+          rd.readEntries(function(ents){
+            if(!ents.length){ Promise.all(todo.map(function(x){return recorrer(x,out);})).then(res); return; }
+            todo=todo.concat(Array.prototype.slice.call(ents)); leer();
+          },function(){ res(); });
+        })();
+      } else res();
+    });
+  }
+})();
+
+/* ==================================================================
+   8. VISTA BIBLIOTECA
+   ================================================================== */
+/* ---------- proyectos publicados en el sitio (GitHub Pages) ----------
+   La biblioteca se pinta con el manifiesto, que es pequeño; el .json completo
+   de cada proyecto se descarga sólo cuando alguien lo abre, y se guarda en
+   caché para que la tableta pueda seguir trabajando sin red. */
+async function cargarManifiesto(){
+  if(!MODO_WEB) return 0;
+  try{
+    var r=await fetch('proyectos.json?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok) return -1;
+    var m=await r.json();
+    if(!m||!Array.isArray(m.proyectos)) return -1;
+    var n=0;
+    m.proyectos.forEach(function(p){
+      if(!p||!p.folio) return;
+      var ya=libPorFolio(p.folio);
+      if(ya&&!ya.remoto) return;                 // lo cargado a mano manda
+      var reg={pk:p.folio, folio:p.folio, cliente:p.cliente||'—',
+               archivo:p.archivo||('datos/'+p.folio+'.json'),
+               nombre:String(p.archivo||p.folio).split('/').pop(),
+               bytes:p.bytes||0, sha:p.sha||'', jerarquico:p.jerarquico!==false,
+               conteos:p.conteos||{}, remoto:true, P:null};
+      if(ya){ LIB[LIB.indexOf(ya)]=reg; } else { LIB.push(reg); }
+      n++;
+    });
+    LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
+    return n;
+  }catch(e){ return -1; }
+}
+
+async function asegurarDatos(r){
+  if(r.P) return r.P;
+  var texto=await Almacen.leerCache(r.folio,r.sha);
+  if(!texto){
+    var url=r.archivo+(r.sha?('?v='+encodeURIComponent(r.sha)):'');
+    var resp=await fetch(url);
+    if(!resp.ok) throw new Error('No se pudo descargar '+r.folio+' (HTTP '+resp.status+')');
+    texto=await resp.text();
+    Almacen.guardarCache(r.folio,r.sha,texto);
+  }
+  r.crudo=texto;
+  r.P=normalizar(JSON.parse(texto), r.nombre||(r.folio+'.json'));
+  r.conteos=r.P.conteos; r.jerarquico=r.P.jerarquico;
+  return r.P;
+}
+
+async function abrirProyecto(r,modulo){
+  if(r.P){ setActual(r); ir(modulo); return; }
+  $('#cargaTit').textContent='Descargando '+r.folio;
+  $('#cargaTxt').textContent=r.bytes?('Unos '+Math.round(r.bytes/1024)+' KB.'):'Espera un momento.';
+  $('#veloCarga').classList.add('on');
+  try{
+    await asegurarDatos(r);
+    $('#veloCarga').classList.remove('on');
+    setActual(r); ir(modulo);
+  }catch(e){
+    $('#veloCarga').classList.remove('on');
+    toast('No se pudo abrir '+r.folio+': '+e.message+
+          (Sync.estado()==='sin-red'?' · Sin conexión':''),true);
+  }
+}
+
+var ultimosErrores=[];
+function pintarErrores(){
+  var c=$('#errCarga');
+  if(!ultimosErrores.length){ c.style.display='none'; return; }
+  c.style.display='block';
+  c.innerHTML='<b>'+ultimosErrores.length+' archivo(s) no se pudieron leer:</b><ul style="margin:6px 0 0; padding-left:20px">'+
+    ultimosErrores.map(function(e){ return '<li>'+esc(e)+'</li>'; }).join('')+'</ul>';
+}
+
+function pintarBiblioteca(){
+  var q=$('#busLib').value.trim().toLowerCase();
+  var cont=$('#rejilla'); cont.innerHTML='';
+  var vis=LIB.filter(function(r){
+    if(!q) return true;
+    return (r.folio+' '+r.cliente+' '+r.archivo).toLowerCase().indexOf(q)>=0;
+  });
+  $('#pieLib').textContent=LIB.length?(LIB.length+' proyecto(s) en biblioteca'):'';
+
+  if(!vis.length){
+    cont.innerHTML='<div class="vacio">'+(LIB.length
+      ? 'Ningún proyecto coincide con «'+esc(q)+'».'
+      : '<b>La biblioteca está vacía.</b><br>Carga uno o varios .json arriba para empezar.')+'</div>';
+    return;
+  }
+
+  vis.forEach(function(r){
+    var c=r.conteos||{}, res=Prog.resumenFicha(r.folio,c,r.jerarquico);
+    var t=document.createElement('div'); t.className='tarj';
+
+    var chips=[];
+    if(r.jerarquico){
+      if(c.ductos!=null) chips.push('<span class="chip">'+c.ductos+' ductos</span>');
+      if(c.piezas!=null) chips.push('<span class="chip">'+c.piezas+' piezas</span>');
+      if(c.lienzos!=null) chips.push('<span class="chip">'+c.lienzos+' lienzos</span>');
+      if(c.accesorios) chips.push('<span class="chip">'+c.unidadesAcc+' accesorios</span>');
+    }else{
+      chips.push('<span class="chip mal">Formato antiguo · solo Corte</span>');
+      if(c.corte!=null) chips.push('<span class="chip">'+c.corte+' piezas</span>');
+    }
+    if(r.P){
+      var noCirc=Object.keys(r.P.formas).filter(function(f){ return clasificarForma(f)!=='circular'; });
+      if(noCirc.length) chips.push('<span class="chip info">'+noCirc.join(', ')+'</span>');
+      if(r.P.sinSoportes) chips.push('<span class="chip av">'+r.P.sinSoportes+' ductos sin soportes</span>');
+    }else if(r.remoto) chips.push('<span class="chip info">☁ en el sitio</span>');
+    if(res.corte.bloq) chips.push('<span class="chip lock">🔒 Corte finalizado</span>');
+    if(res.ensamble.bloq) chips.push('<span class="chip lock">🔒 Ensamble finalizado</span>');
+
+    var pC=pct(res.corte.hechas,res.corte.total), pE=pct(res.ensamble.hechas,res.ensamble.total);
+    var origen=r.ruta||r.archivo||r.nombre||'';
+    t.innerHTML=
+      '<div class="tarj-top"><div style="min-width:0">'+
+        '<h3>'+esc(r.folio)+'</h3><div class="cli">'+esc(r.cliente)+'</div>'+
+        '<div class="arch" title="'+esc(origen)+'">'+esc(origen)+'</div></div></div>'+
+      '<div class="chips">'+chips.join('')+'</div>'+
+      '<div class="pfila"><span class="lbl">Corte</span><span class="pbar">'+
+        '<i style="width:'+pC+'%;background:var(--corte)"></i></span>'+
+        '<span class="num">'+res.corte.hechas+'/'+res.corte.total+'</span></div>'+
+      '<div class="pfila"><span class="lbl">Ensamble</span><span class="pbar">'+
+        '<i style="width:'+pE+'%;background:var(--ens)"></i></span>'+
+        '<span class="num">'+(r.jerarquico?(res.ensamble.hechas+'/'+res.ensamble.total):'—')+'</span></div>'+
+      '<div class="tarj-acc">'+
+        '<button class="btn pri" data-ir="corte">✂️ CORTE</button>'+
+        '<button class="btn pri-e" data-ir="ensamble"'+(r.jerarquico?'':' disabled title="Requiere formato jerárquico"')+'>🔧 ENSAMBLE</button>'+
+        '<button class="btn sm peligro" data-quitar="1" title="Quitar de la biblioteca">✕</button>'+
+      '</div>';
+
+    t.querySelector('[data-ir="corte"]').onclick=function(){ abrirProyecto(r,'corte'); };
+    var be=t.querySelector('[data-ir="ensamble"]');
+    if(!be.disabled) be.onclick=function(){ abrirProyecto(r,'ensamble'); };
+    t.querySelector('[data-quitar]').onclick=async function(){
+      var ok=await preguntar({titulo:'Quitar proyecto',
+        texto: r.remoto
+          ? 'Se quita «'+r.folio+'» de esta tableta. Sigue estando en el sitio: volverá a aparecer al recargar la página.'
+          : 'Se quita «'+r.folio+'» de la biblioteca. El avance guardado NO se borra: si lo vuelves a cargar, reaparece.',
+        si:'Quitar', peligro:true});
+      if(!ok) return;
+      // indexOf puede dar -1 si la tarjeta quedó obsoleta: splice(-1,1) borraría OTRO proyecto
+      var i=LIB.indexOf(r);
+      if(i<0){ var act=libPorFolio(r.folio); i=act?LIB.indexOf(act):-1; }
+      if(i<0){ toast('Ese proyecto ya no está en la biblioteca',true); pintarBiblioteca(); return; }
+      LIB.splice(i,1);
+      await Almacen.borrarProyecto(r.pk);
+      if(actual&&actual.folio===r.folio){ setActual(null); ir('carga'); }
+      pintarBiblioteca(); toast('Proyecto quitado');
+    };
+    cont.appendChild(t);
+  });
+}
+$('#busLib').oninput=pintarBiblioteca;
+
+$('#btnVaciar').onclick=async function(){
+  if(!LIB.length){ toast('La biblioteca ya está vacía'); return; }
+  var ok=await preguntar({titulo:'Vaciar biblioteca',
+    texto:'Se quitan los '+LIB.length+' proyectos cargados. El avance guardado NO se borra.',
+    si:'Vaciar', peligro:true});
+  if(!ok) return;
+  LIB=[]; await Almacen.vaciarProyectos(); setActual(null); ir('carga'); toast('Biblioteca vaciada');
+};
+
+$('#btnExportar').onclick=function(){
+  var datos={app:'sistema-produccion-dti', v:1, exportado:new Date().toISOString(), progresos:{}};
+  // 1) lo que ya esté escrito en disco
+  Almacen.clavesLS('prog:').forEach(function(k){ datos.progresos[k]=Almacen.getLS(k); });
+  // 2) y SOBRE TODO el estado vivo en memoria: sin esto, exportar no serviría
+  //    justo en el modo sin almacenamiento, que es cuando el pie pide exportar.
+  Prog.volcar();
+  Object.keys(Prog.cache).forEach(function(k){
+    var e=Prog.cache[k];
+    var hay=e.bloq||Object.keys(e.marcados).length||Object.keys(e.acc).length;
+    if(hay) datos.progresos[k]=Prog.serial(e);
+  });
+  var n=Object.keys(datos.progresos).length;
+  if(!n){ toast('No hay avance guardado que exportar',true); return; }
+  var blob=new Blob([JSON.stringify(datos,null,1)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='avance-produccion-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },4000);
+  toast('Respaldo exportado ('+n+' registros)');
+};
+$('#btnImportar').onclick=function(){ $('#inRespaldo').click(); };
+$('#inRespaldo').onchange=async function(e){
+  var f=e.target.files[0]; e.target.value='';
+  if(!f) return;
+  try{
+    var d=JSON.parse(await leerTexto(f));
+    if(!d||d.app!=='sistema-produccion-dti'||!d.progresos) throw new Error('Archivo de respaldo no válido');
+    var ok=await preguntar({titulo:'Importar avance',
+      texto:'Se van a restaurar '+Object.keys(d.progresos).length+' registros de avance. '+
+            'El avance actual de esos folios se reemplaza.', si:'Importar'});
+    if(!ok) return;
+    var n=0;
+    Object.keys(d.progresos).forEach(function(k){
+      if(k.indexOf('prog:')!==0) return;
+      Almacen.setLS(k,d.progresos[k]);          // puede fallar si no hay almacenamiento
+      delete Prog.cache[k];
+      Prog.adoptar(k,d.progresos[k]);           // el estado vivo sí queda restaurado siempre
+      n++;
+    });
+    pintarBiblioteca(); actualizarMiniProg();
+    if(actual&&vistaActual!=='carga') ir(vistaActual);
+    toast(n+' registros restaurados');
+  }catch(err){ toast('No se pudo importar: '+err.message,true); }
+};
+
+/* ==================================================================
+   9. MODULO CORTE
+   ================================================================== */
+var Corte=(function(){
+  var P=null, est=null, nodos=null, filtroEst='faltan', items=[];
+
+  function visible(it){
+    if(filtroEst!=='todas'){
+      var hecho = it.esAccesorio ? ((est.acc[it.clave]||0)>=it.cantidad) : !!est.marcados[it.clave];
+      if(filtroEst==='faltan'&&hecho) return false;
+      if(filtroEst==='listas'&&!hecho) return false;
+    }
+    var ft=$('#coTipo').value, fm=$('#coMat').value;
+    if(ft && (it.tipo||'')!==ft) return false;
+    if(fm && (it.material||'')!==fm) return false;
+    var q=$('#coBus').value.trim().toLowerCase();
+    if(q){
+      var hay=[it.id,it.tipo,it.material,it.color,it.ruta].filter(Boolean).join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  }
+
+  function badges(it){
+    var b=[];
+    if(it.ruta&&it.ruta!=='—') b.push('<span class="et ruta">'+esc(it.ruta)+'</span>');
+    if(it.tipo) b.push('<span class="et '+(it.esVena?'vena':'tipo')+'">'+(it.esVena?'🩹 ':'🔖 ')+esc(it.tipo)+'</span>');
+    if(it.ancho_cm) b.push('<span class="et">'+fmt(it.largo_cm)+' × '+fmt(it.ancho_cm)+' cm</span>');
+    if(it.material) b.push('<span class="et mat">🧵 '+esc(it.material)+'</span>');
+    if(it.color) b.push('<span class="et"><span class="muestra" style="background:'+hexColor(it.color)+'"></span>'+esc(it.color)+'</span>');
+    if(it.difusion){
+      var hs=(it.horasDif&&it.horasDif.length)?(' @ '+it.horasDif.join(', ')+' h'):' (hora no especificada)';
+      b.push('<span class="et dif">💨 '+(it.num_difusiones||1)+' difusión'+hs+'</span>');
+    }
+    return b.join('');
+  }
+
+  function montar(){
+    var cont=$('#coLista');
+    cont.textContent=''; nodos={};
+    var fr=document.createDocumentFragment();
+    var tplA=$('#tplFila').content.firstElementChild;
+    var tplB=$('#tplFilaAcc').content.firstElementChild;
+    items.forEach(function(it){
+      var el=(it.esAccesorio?tplB:tplA).cloneNode(true);
+      el.dataset.c=it.clave;
+      if(it.tipo) el.dataset.tipo=it.tipo;      // franja lateral de color por tipo
+      el.querySelector('.tit').textContent=it.id;
+      el.querySelector('.sub').innerHTML=badges(it);
+      nodos[it.clave]=el;
+      fr.appendChild(el);
+    });
+    cont.appendChild(fr);
+    refrescarTodo();
+  }
+
+  function refrescarFila(it){
+    var el=nodos[it.clave]; if(!el) return;
+    if(it.esAccesorio){
+      var n=Math.min(est.acc[it.clave]||0,it.cantidad);
+      el.querySelector('.num').textContent=n+'/'+it.cantidad;
+      el.classList.toggle('lista-ok',n>=it.cantidad);
+    }else{
+      el.classList.toggle('lista-ok',!!est.marcados[it.clave]);
+    }
+    el.hidden=!visible(it);
+  }
+  function refrescarTodo(){
+    items.forEach(refrescarFila);
+    contar();
+  }
+  function contar(){
+    var hechas=0, total=0, vis=0;
+    items.forEach(function(it){
+      if(it.esAccesorio){ total+=it.cantidad; hechas+=Math.min(est.acc[it.clave]||0,it.cantidad); }
+      else { total+=1; if(est.marcados[it.clave]) hechas++; }
+      if(nodos[it.clave]&&!nodos[it.clave].hidden) vis++;
+    });
+    var p=pct(hechas,total);
+    $('#coTotal').textContent=total; $('#coHechas').textContent=hechas;
+    $('#coFaltan').textContent=total-hechas;
+    $('#coBarra').style.width=p+'%'; $('#coPct').textContent=p+'%';
+    if(!vis && !$('#coLista').querySelector('.vacio')){
+      var v=document.createElement('div'); v.className='vacio';
+      v.style.cssText='border:0;background:none;padding:34px';
+      v.textContent = items.length ? 'No hay piezas que coincidan con los filtros.'
+                                   : 'Este proyecto no trae ninguna pieza en el JSON.';
+      $('#coLista').appendChild(v);
+    }else if(vis){
+      var ex=$('#coLista').querySelector('.vacio'); if(ex) ex.remove();
+    }
+    actualizarMiniProg();
+  }
+
+  function bloqueado(){
+    if(est.bloq){ toast('Esta orden está finalizada. Desbloquéala para hacer cambios.',true); return true; }
+    return false;
+  }
+  function alternar(it){
+    if(bloqueado()) return;
+    if(est.marcados[it.clave]){ delete est.marcados[it.clave]; est.quitados[it.clave]=1; }
+    else { est.marcados[it.clave]=1; delete est.quitados[it.clave]; }
+    var el=nodos[it.clave];
+    el.classList.toggle('lista-ok',!!est.marcados[it.clave]);
+    if(filtroEst!=='todas'){
+      el.classList.add('saliendo');
+      setTimeout(function(){ el.classList.remove('saliendo'); el.hidden=!visible(it); contar(); },260);
+    }
+    contar(); Prog.marcarSucio('corte',P.folio);
+  }
+  function ajustarAcc(it,d){
+    if(bloqueado()) return;
+    var n=Math.min(est.acc[it.clave]||0,it.cantidad);
+    if(d==='all') n=(n>=it.cantidad)?0:it.cantidad; else n=Math.max(0,Math.min(it.cantidad,n+d));
+    if(n){ est.acc[it.clave]=n; delete est.quitados[it.clave]; }
+    else { delete est.acc[it.clave]; est.quitados[it.clave]=1; }
+    refrescarFila(it); contar(); Prog.marcarSucio('corte',P.folio);
+  }
+
+  $('#coLista').addEventListener('click',function(e){
+    var fila=e.target.closest('[data-c]'); if(!fila) return;
+    var it=items.filter(function(x){return x.clave===fila.dataset.c;})[0]; if(!it) return;
+    if(it.esAccesorio){
+      var b=e.target.closest('[data-d]'); if(!b) return;
+      ajustarAcc(it, b.dataset.d==='all'?'all':parseInt(b.dataset.d,10));
+    } else alternar(it);
+  });
+
+  var tBus=null;
+  $('#coBus').oninput=function(){ clearTimeout(tBus); tBus=setTimeout(refrescarTodo,130); };
+  $('#coTipo').onchange=refrescarTodo;
+  $('#coMat').onchange=refrescarTodo;
+  $$('#vCorte [data-est]').forEach(function(b){
+    b.onclick=function(){
+      $$('#vCorte [data-est]').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); filtroEst=b.dataset.est; refrescarTodo();
+    };
+  });
+
+  $('#coMarcarN').onclick=async function(){
+    if(bloqueado()) return;
+    // Se cuentan UNIDADES pendientes visibles: los accesorios aportan (cantidad - hechas),
+    // si no "Marcar N" diría que no hay nada pendiente cuando sólo hay accesorios a la vista.
+    var pend=[];
+    items.forEach(function(it){
+      if(!nodos[it.clave]||nodos[it.clave].hidden) return;
+      if(it.esAccesorio){
+        var falta=it.cantidad-Math.min(est.acc[it.clave]||0,it.cantidad);
+        for(var j=0;j<falta;j++) pend.push(it);
+      }else if(!est.marcados[it.clave]) pend.push(it);
+    });
+    if(!pend.length){ toast('No hay unidades pendientes visibles con estos filtros',true); return; }
+    var v=await preguntar({titulo:'Marcar varias',
+      texto:'Hay '+pend.length+' unidades pendientes visibles. ¿Cuántas marcas como listas?',
+      input:true, valor:String(pend.length), placeholder:'Cantidad', si:'Marcar'});
+    if(v==null) return;
+    var n=parseInt(v,10);
+    if(isNaN(n)||n<=0){ toast('Cantidad no válida',true); return; }
+    n=Math.min(n,pend.length);
+    for(var i=0;i<n;i++){
+      var it=pend[i];
+      if(it.esAccesorio){
+        est.acc[it.clave]=Math.min(it.cantidad,(est.acc[it.clave]||0)+1);
+        delete est.quitados[it.clave];
+      }else{ est.marcados[it.clave]=1; delete est.quitados[it.clave]; }
+    }
+    refrescarTodo(); Prog.marcarSucio('corte',P.folio);
+    toast(n+' unidades marcadas');
+  };
+
+  $('#coReiniciar').onclick=async function(){
+    if(bloqueado()) return;
+    var ok=await preguntar({titulo:'Reiniciar Corte',
+      texto:'Se borra todo el avance de CORTE del folio '+P.folio+'. El avance de Ensamble no se toca.',
+      si:'Reiniciar', peligro:true});
+    if(!ok) return;
+    Prog.limpiar('corte',P.folio); est=Prog.cargar('corte',P.folio);
+    refrescarTodo(); toast('Avance de Corte reiniciado');
+  };
+  $('#coBloquear').onclick=async function(){
+    var ok=await preguntar({
+      titulo: est.bloq?'Desbloquear orden':'Finalizar orden',
+      texto: est.bloq?'Se podrá volver a marcar y desmarcar piezas.'
+                     :'Al finalizar ya no se podrán marcar ni desmarcar piezas de Corte.',
+      si: est.bloq?'Desbloquear':'Finalizar', peligro:!est.bloq});
+    if(!ok) return;
+    est.bloq=!est.bloq; Prog.marcarSucio('corte',P.folio); pintarBloqueo();
+    toast(est.bloq?'Orden de Corte finalizada':'Orden de Corte desbloqueada');
+  };
+  function pintarBloqueo(){
+    var b=$('#coBloquear');
+    b.textContent = est.bloq?'🔓 Desbloquear':'🔒 Finalizar';
+    b.className   = 'btn sm'+(est.bloq?' on':'');
+    $('#coReiniciar').disabled=est.bloq;
+    $('#coMarcarN').disabled=est.bloq;
+  }
+
+  function abrir(proy){
+    if(!proy) return;
+    // al cambiar de proyecto se limpian buscador y filtros: si no, el nuevo
+    // proyecto aparecería recortado por un filtro que el operador no puso ahí
+    if(!P||P.folio!==proy.folio){
+      $('#coBus').value=''; $('#coTipo').value=''; $('#coMat').value='';
+    }
+    P=proy; est=Prog.cargar('corte',P.folio); items=P.corte;
+    $('#coTit').textContent='Corte · '+P.folio;
+    $('#coSub').textContent=P.cliente+' · '+P.archivo+(P.jerarquico?'':' · formato antiguo');
+    var tipos={}, mats={};
+    items.forEach(function(it){ if(it.tipo) tipos[it.tipo]=1; if(it.material) mats[it.material]=1; });
+    function llenar(sel,obj,txt){
+      var v=sel.value;
+      sel.innerHTML='<option value="">'+txt+'</option>';
+      Object.keys(obj).sort().forEach(function(k){
+        var o=document.createElement('option'); o.value=k; o.textContent=k; sel.appendChild(o); });
+      sel.value=Object.prototype.hasOwnProperty.call(obj,v)?v:'';
+    }
+    llenar($('#coTipo'),tipos,'Todos los tipos');
+    llenar($('#coMat'),mats,'Todos los materiales');
+    pintarBloqueo();
+    montar();
+  }
+  return {abrir:abrir};
+})();
+
+/* ==================================================================
+   10. MODULO ENSAMBLE
+   ================================================================== */
+var Ens=(function(){
+  var P=null, est=null, sel=null, zoom=1, zoomManual=false, nodosLz={};
+  var abiertos={};   // ductos que el operador desplegó a mano: el repintado debe respetarlos
+  var vbX=0, vbY=0, vbW=600, vbH=600;   // viewBox efectivo; se recorta al contenido real
+  var SOP={
+    OREJA:16,                                   // separacion del tirante respecto a la tela
+    M_MIN:0.05, M_KNEE:0.60, M_MAX:1.80,        // rango real de largo_m en los datos
+    L_MIN:60,   L_KNEE:190,  L_MAX:250,         // su equivalente en pixeles
+    L_NULO:110, FS:16,
+    ROJO:'#dc2626', AMBAR:'#d97706'
+  };
+
+  function el(tag,attrs,padre){
+    var n=document.createElementNS(SVGNS,tag);
+    for(var k in attrs) if(attrs[k]!=null) n.setAttribute(k,attrs[k]);
+    if(padre) padre.appendChild(n);
+    return n;
+  }
+  function txtSvg(g,x,y,s,o){
+    o=o||{};
+    var t=el('text',{x:x,y:y, class:'cota-txt'+(o.pie?' pie-txt':''),
+      'text-anchor':o.anchor||'middle','dominant-baseline':'middle',
+      fill:o.fill||SOP.TINTA,'font-weight':o.peso||700,'font-family':"'Inter',sans-serif",
+      'font-size':SOP.FS,'paint-order':'stroke',stroke:'#fff','stroke-width':SOP.FS*0.3,
+      'stroke-linejoin':'round', transform:o.rot?('rotate('+o.rot+' '+x+' '+y+')'):null},g);
+    t.textContent=s; return t;
+  }
+  /* Escala vertical COMPARTIDA y comprimida (bilineal, rodilla en el p90 = 0.60 m).
+     A escala real el dibujo invertiria el orden: un tirante corto en un ducto chico
+     se veria mas largo que uno largo en un ducto grande. Con escala compartida
+     "linea mas larga = soporte mas largo" es cierto en todo el proyecto. */
+  function largoAPx(m){
+    if(!(m>0)) return SOP.L_NULO;
+    var mc=Math.min(Math.max(m,SOP.M_MIN),SOP.M_MAX);
+    var s1=(SOP.L_KNEE-SOP.L_MIN)/(SOP.M_KNEE-SOP.M_MIN);
+    var s2=(SOP.L_MAX-SOP.L_KNEE)/(SOP.M_MAX-SOP.M_KNEE);
+    return mc<=SOP.M_KNEE ? SOP.L_MIN+(mc-SOP.M_MIN)*s1 : SOP.L_KNEE+(mc-SOP.M_KNEE)*s2;
+  }
+
+  /* ---------- arbol ---------- */
+  function pintarArbol(){
+    var cont=$('#enArbol'); cont.innerHTML='';
+    var algo=false;
+    P.sistemas.forEach(function(S){
+      if(!S.ductos.length) return;
+      algo=true;
+      if(P.sistemas.length>1){
+        var sh=document.createElement('div'); sh.className='sis-h';
+        sh.textContent='Sistema '+S.id; cont.appendChild(sh);
+      }
+      S.ductos.forEach(function(D){
+        var hechas=0;
+        D.piezas.forEach(function(pz){ pz.lienzos.forEach(function(l){ if(est.marcados[l.clave]) hechas++; }); });
+        var kd='S'+S.id+'|D'+D.numero;
+        var g=document.createElement('div');
+        g.className='duc'+((abiertos[kd]||(sel&&sel.ducto===D))?' abierto':'');
+        var h=document.createElement('div');
+        h.className='duc-h'+((hechas===D.total&&D.total)?' full':'');
+        h.innerHTML='<span class="fl">'+(g.classList.contains('abierto')?'▼':'▶')+'</span>'+
+          '<span class="nm">Ducto '+esc(D.numero)+'</span>'+
+          '<span class="cnt">'+hechas+'/'+D.total+'</span>';
+        h.onclick=function(){
+          g.classList.toggle('abierto');
+          var ab=g.classList.contains('abierto');
+          if(ab) abiertos[kd]=1; else delete abiertos[kd];
+          h.querySelector('.fl').textContent=ab?'▼':'▶';
+        };
+        g.appendChild(h);
+        var body=document.createElement('div'); body.className='duc-body';
+        D.piezas.forEach(function(pz){
+          var hp=pz.lienzos.filter(function(l){ return est.marcados[l.clave]; }).length;
+          var p=document.createElement('div');
+          p.className='pz'+((sel&&sel.pieza===pz)?' sel':'')+((hp===pz.lienzos.length&&pz.lienzos.length)?' full':'');
+          p.innerHTML='<span class="nm">Pieza '+esc(pz.letra)+'</span>'+
+            '<span class="cnt">'+hp+'/'+pz.lienzos.length+'</span>';
+          p.onclick=function(){ abiertos[kd]=1; seleccionar(D,pz); };
+          body.appendChild(p);
+        });
+        g.appendChild(body);
+        cont.appendChild(g);
+      });
+    });
+    if(!algo) cont.innerHTML='<div style="padding:24px;text-align:center;color:var(--tinta3);font-size:1rem">'+
+      'Este proyecto no trae ductos.</div>';
+  }
+
+  /* ---------- seleccion ---------- */
+  function seleccionar(D,pz){
+    sel={ducto:D,pieza:pz};
+    $('#enVacio').style.display='none';
+    $('#enPanel').style.display='flex';
+    pintarArbol(); pintarPanel(); dibujar();
+  }
+
+  function siguientePieza(){
+    var lista=[];
+    P.sistemas.forEach(function(S){ S.ductos.forEach(function(D){ D.piezas.forEach(function(pz){
+      if(pz.lienzos.length) lista.push({ducto:D,pieza:pz}); }); }); });
+    if(!lista.length) return null;
+    var i=-1;
+    for(var k=0;k<lista.length;k++) if(sel&&lista[k].pieza===sel.pieza){ i=k; break; }
+    for(var j=1;j<=lista.length;j++){
+      var c=lista[(i+j+lista.length)%lista.length];
+      if(c.pieza.lienzos.some(function(l){ return !est.marcados[l.clave]; })) return c;
+    }
+    return null;
+  }
+
+  /* ---------- panel de lienzos (el checklist) ---------- */
+  function pintarPanel(){
+    if(!sel) return;
+    var D=sel.ducto, pz=sel.pieza;
+    $('#lpTit').textContent='Ducto '+D.numero+' · Pieza '+pz.letra;
+    var hp0=pz.lienzos.filter(function(l){ return est.marcados[l.clave]; }).length;
+    $('#lpMeta').textContent=hp0+' de '+pz.lienzos.length+' lienzos';
+
+    var cont=$('#lpLista'); cont.textContent=''; nodosLz={};
+    var tpl=$('#tplLienzo').content.firstElementChild;
+    var fr=document.createDocumentFragment();
+    pz.lienzos.forEach(function(L,i){
+      var e=tpl.cloneNode(true), col=colorLienzo(i);
+      e.dataset.c=L.clave;
+      var ord=e.querySelector('.ord');
+      ord.textContent=L.etiqueta;
+      ord.style.background=col;                    // mismo color que su cuña en el dibujo
+      e.style.borderLeft='10px solid '+col;
+      e.querySelector('.cu b').textContent=L.id;   // el id es lo que va impreso en la tela
+      nodosLz[L.clave]=e;
+      fr.appendChild(e);
+    });
+    cont.appendChild(fr);
+    refrescarPanel();
+  }
+  function refrescarPanel(){
+    if(!sel) return;
+    sel.pieza.lienzos.forEach(function(L){
+      var e=nodosLz[L.clave]; if(e) e.classList.toggle('lista-ok',!!est.marcados[L.clave]);
+      // El color identifica al lienzo y no cambia; el verde indica "ya está hecho".
+      var sec=$('#secL'+L.idx,$('#enDibujo'));
+      if(sec) sec.setAttribute('fill', est.marcados[L.clave]
+        ? 'rgba(16,185,129,.55)' : (sec.getAttribute('data-c')||'#ffffff'));
+    });
+    var hp=sel.pieza.lienzos.filter(function(l){ return est.marcados[l.clave]; }).length;
+    var tot=sel.pieza.lienzos.length;
+    $('#lpMeta').textContent=hp+' de '+tot+' lienzos';
+    $('#lpCompletar').textContent = (hp>=tot&&tot) ? 'SIGUIENTE PIEZA' : 'PIEZA LISTA';
+    contar();
+  }
+  $('#lpLista').addEventListener('click',function(e){
+    var f=e.target.closest('[data-c]'); if(!f||!sel) return;
+    var L=sel.pieza.lienzos.filter(function(x){return x.clave===f.dataset.c;})[0];
+    if(L) alternar(L);
+  });
+  function bloqueado(){
+    if(est.bloq){ toast('El ensamble de este folio está finalizado. Desbloquéalo para hacer cambios.',true); return true; }
+    return false;
+  }
+  function alternar(L){
+    if(bloqueado()) return;
+    if(est.marcados[L.clave]){ delete est.marcados[L.clave]; est.quitados[L.clave]=1; }
+    else { est.marcados[L.clave]=1; delete est.quitados[L.clave]; }
+    refrescarPanel(); pintarArbol(); refrescarTodo(); Prog.marcarSucio('ensamble',P.folio);
+  }
+  $('#lpCompletar').onclick=function(){
+    if(bloqueado()) return;
+    if(sel){
+      var falta=sel.pieza.lienzos.some(function(l){ return !est.marcados[l.clave]; });
+      if(falta){
+        sel.pieza.lienzos.forEach(function(l){ est.marcados[l.clave]=1; delete est.quitados[l.clave]; });
+        Prog.marcarSucio('ensamble',P.folio);
+        refrescarPanel(); pintarArbol(); refrescarTodo();
+        toast('Pieza '+sel.pieza.letra+' completa');
+      }
+    }
+    var sig=siguientePieza();
+    if(sig) seleccionar(sig.ducto,sig.pieza);
+    else toast('🎉 No quedan piezas pendientes en este proyecto');
+  };
+  /* ---------- contadores (sólo alimenta la píldora de la barra superior) ---------- */
+  function contar(){
+    actualizarMiniProg();
+  }
+
+  /* ---------- DIBUJO ---------- */
+  function dibujar(){
+    var cont=$('#enDibujo');
+    $$('svg,.zoomc',cont).forEach(function(n){ n.remove(); });
+    if(!sel) return;
+    var D=sel.ducto, pz=sel.pieza;
+
+    if(!pz.lienzos.length){
+      $('#enVacio').style.display='block';
+      $('#enVacio').innerHTML='<div class="ic">⚠️</div><h3>Esta pieza no tiene lienzos</h3>';
+      return;
+    }
+    if(D.perimetro_cm==null||D.perimetro_cm<=0){
+      $('#enVacio').style.display='block';
+      $('#enVacio').innerHTML='<div class="ic">⚠️</div><h3>Este ducto no trae medida</h3>'+
+        '<p>Los lienzos se pueden marcar igual.</p>';
+      return;
+    }
+    $('#enVacio').style.display='none';
+
+    var out=buildOutline(D.forma,D.perimetro_cm);
+    /* Caja de dibujo adaptativa: sólo se reserva arriba lo que el soporte realmente
+       necesita, para que un tirante de 0.07 m no deje media lámina en blanco. */
+    var geo=calcSoportes(D,out);
+    // Caja provisional amplia: al final se recorta a lo que de verdad se dibujó,
+    // así el ducto sale lo más grande posible y nada queda cortado.
+    vbX=-320; vbY=-460; vbW=1240; vbH=1180;
+    var svg=el('svg',{viewBox:vbX+' '+vbY+' '+vbW+' '+vbH,xmlns:SVGNS});
+    svg.addEventListener('wheel',function(e){
+      if(e.ctrlKey||e.metaKey){ e.preventDefault(); cambiarZoom(e.deltaY<0?0.15:-0.15); }
+    },{passive:false});
+
+    /* --- contorno del ducto --- */
+    el('path',{d:out.d, fill:'#ffffff', stroke:'#dc2626','stroke-width':6,
+      'stroke-dasharray': out.esquematico?'12 7':null,
+      'vector-effect':'non-scaling-stroke'},svg);
+
+    /* --- sectores de lienzo, repartidos por ancho NETO --- */
+    var nets=pz.lienzos.map(function(L){ return Math.max(0,L.neto_cm); });
+    var suma=nets.reduce(function(a,b){return a+b;},0);
+    var repartoUniforme=false;
+    if(suma<=0){   // sin anchos utilizables: se reparte a partes iguales Y SE DICE
+      repartoUniforme=true;
+      suma=pz.lienzos.length; nets=nets.map(function(){ return 1; });
+    }
+    var h0=(D.horas.length?D.horas[0]:9);
+    var t0=out.fractionAtHour(h0);
+    var c=out.centro();
+    var gSect=el('g',{},svg), gSep=el('g',{},svg), gGuia=el('g',{},svg), gLab=el('g',{},svg);
+    var minX=Infinity, maxX=-Infinity;
+    out.pts.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[0]>maxX)maxX=p[0]; });
+    var colX={der:maxX+80, izq:minX-80};
+    // SEPARACION cuenta el alto del texto (≈44) MÁS el halo blanco de 7 por lado:
+    // con menos de 60 las etiquetas de fuera se tocan.
+    var RADIO_ETQ=0.62, ANCHO_MIN=86, SEPARACION=62;
+
+    // 1) sectores y separadores; se anota dónde CABRÍA cada etiqueta
+    var etiquetas=[], t=t0;
+    pz.lienzos.forEach(function(L,i){
+      var tIni=t, tFin=t+nets[i]/suma, col=colorLienzo(i);
+      var pasos=Math.max(2,Math.ceil((tFin-tIni)*180));
+      var dd='M '+c.x.toFixed(2)+' '+c.y.toFixed(2);
+      for(var s=0;s<=pasos;s++){
+        var p=out.pointAtFraction(tIni+(tFin-tIni)*(s/pasos));
+        dd+=' L '+p.x.toFixed(2)+' '+p.y.toFixed(2);
+      }
+      dd+=' Z';
+      var tenue=tinte(col,0.20);
+      var sec=el('path',{id:'secL'+L.idx, d:dd, fill:tenue, 'data-c':tenue,
+        stroke:'none', style:'cursor:pointer'},gSect);
+      sec.addEventListener('click',function(){ alternar(L); });
+      sec.addEventListener('mouseenter',function(){
+        var e=nodosLz[L.clave]; if(e) e.classList.add('res'); });
+      sec.addEventListener('mouseleave',function(){
+        var e=nodosLz[L.clave]; if(e) e.classList.remove('res'); });
+      el('title',{},sec).textContent=L.id+'  ·  ancho '+fmt(L.ancho_cm)+' cm';
+
+      var pi=out.pointAtFraction(tIni);
+      el('line',{x1:c.x,y1:c.y,x2:pi.x,y2:pi.y,stroke:'#0f172a','stroke-width':4,
+        'stroke-linecap':'round','vector-effect':'non-scaling-stroke'},gSep);
+
+      // ¿cabe la etiqueta dentro de la cuña? Se mide el hueco real a la altura
+      // donde iría, no el ángulo: así vale igual para el círculo y para la elipse.
+      var pm=out.pointAtFraction((tIni+tFin)/2);
+      var pA=out.pointAtFraction(tIni), pB=out.pointAtFraction(tFin);
+      var hueco=Math.hypot((pB.x-pA.x)*RADIO_ETQ,(pB.y-pA.y)*RADIO_ETQ);
+      etiquetas.push({L:L, col:col, dentro:hueco>=ANCHO_MIN,
+        x:c.x+(pm.x-c.x)*RADIO_ETQ, y:c.y+(pm.y-c.y)*RADIO_ETQ,
+        borde:{x:pm.x,y:pm.y}, lado:(pm.x>=c.x?'der':'izq')});
+      t=tFin;
+    });
+
+    // 2) las que no caben salen FUERA del ducto, en columna y separadas entre sí
+    ['der','izq'].forEach(function(lado){
+      var fuera=etiquetas.filter(function(e){ return !e.dentro && e.lado===lado; });
+      if(!fuera.length) return;
+      fuera.sort(function(a,b){ return a.borde.y-b.borde.y; });
+      var centro=fuera.reduce(function(a,e){ return a+e.borde.y; },0)/fuera.length;
+      var inicio=centro-((fuera.length-1)*SEPARACION)/2;
+      fuera.forEach(function(e,k){ e.x=colX[lado]; e.y=inicio+k*SEPARACION; });
+    });
+
+    // 3) líneas guía y etiquetas
+    etiquetas.forEach(function(e){
+      if(!e.dentro){
+        el('polyline',{points:e.borde.x.toFixed(1)+','+e.borde.y.toFixed(1)+' '+
+                              e.x.toFixed(1)+','+e.y.toFixed(1),
+          fill:'none',stroke:e.col,'stroke-width':3,'stroke-linecap':'round',
+          'vector-effect':'non-scaling-stroke'},gGuia);
+        el('circle',{cx:e.borde.x,cy:e.borde.y,r:5,fill:e.col},gGuia);
+      }
+      var tx=el('text',{id:'ordL'+e.L.idx,
+        x:e.x+(e.dentro?0:(e.lado==='der'?16:-16)), y:e.y,
+        'text-anchor':e.dentro?'middle':(e.lado==='der'?'start':'end'),
+        'dominant-baseline':'middle','font-family':"'Inter',sans-serif",
+        'font-weight':900,'font-size':38,fill:e.col,'paint-order':'stroke',
+        stroke:'#fff','stroke-width':7,'stroke-linejoin':'round',style:'cursor:pointer'},gLab);
+      tx.textContent=e.L.etiqueta;
+      tx.addEventListener('click',function(){ alternar(e.L); });
+    });
+
+    /* --- SOPORTES: sólo la línea y su medida --- */
+    dibujarSoportes(svg,D,out,geo);
+
+    cont.appendChild(svg);
+    ajustarCaja(svg);
+    pintarControles(cont);
+    if(!zoomManual) zoom=encuadrar(cont);
+    aplicarZoom();
+    refrescarPanel();
+  }
+
+  // Recorta el viewBox al contenido real (incluye el texto de la medida, que puede
+  // sobresalir bastante a los lados en los soportes de las 3 y las 9).
+  function ajustarCaja(svg){
+    try{
+      var bb=svg.getBBox();
+      if(!bb || !(bb.width>0) || !(bb.height>0)) return;
+      var pad=26;
+      vbX=bb.x-pad; vbY=bb.y-pad; vbW=bb.width+2*pad; vbH=bb.height+2*pad;
+      svg.setAttribute('viewBox',vbX.toFixed(1)+' '+vbY.toFixed(1)+' '+vbW.toFixed(1)+' '+vbH.toFixed(1));
+    }catch(e){}
+  }
+
+  /* Calcula la geometría de los soportes ANTES de dibujar, para ajustar la caja
+     del dibujo a lo que realmente ocupa: así el ducto sale lo más grande posible. */
+  function calcSoportes(D,out){
+    var horas=D.horas;
+    if(!horas.length) return {horas:[], ySin:-10, arriba:-52};
+    var m=Number(D.largo_m);
+    var desc=!(m>0);
+    var L=largoAPx(m);
+    var anclas=horas.map(function(h){
+      var Pp=out.pointAtHour(h);
+      var A={x:Pp.x+Pp.nx*SOP.OREJA, y:Pp.y+Pp.ny*SOP.OREJA};
+      return {h:h, P:Pp, A:A, yTop:A.y-L, s:(A.x>=CX)?1:-1};
+    });
+    var minTop=Math.min.apply(null,anclas.map(function(a){return a.yTop;}));
+    return {horas:horas, m:m, desc:desc, L:L, col:desc?SOP.AMBAR:SOP.ROJO,
+            anclas:anclas, arriba:Math.min(60,minTop-34)};
+  }
+
+  /* Soporte: la línea desde el ducto y su medida en grande. Nada más.
+     Sin techo, sin cable, sin horas: el operador sólo necesita ver dónde va
+     y cuánto mide. */
+  function dibujarSoportes(svg,D,out,geo){
+    var g=el('g',{},svg);
+    if(!geo.horas.length){
+      txtSvg(g,300,geo.ySin-6,'SIN SOPORTES',{fill:'#b45309',peso:800,pie:true});
+      svg.appendChild(g); return;
+    }
+    var m=geo.m, desc=geo.desc, L=geo.L, col=geo.col;
+    var etq = desc ? 'medida ?' : (fmt(m)+' m');
+
+    geo.anclas.forEach(function(an){
+      var Pp=an.P, A=an.A, yTop=an.yTop, s=an.s;
+
+      // arranque en la costura + tirante vertical (la carga del ducto es vertical)
+      el('line',{x1:Pp.x,y1:Pp.y,x2:A.x,y2:A.y,stroke:col,'stroke-width':8,'stroke-linecap':'round',
+        'vector-effect':'non-scaling-stroke'},g);
+      el('line',{x1:A.x,y1:A.y,x2:A.x,y2:yTop,stroke:col,'stroke-width':7,'stroke-linecap':'round',
+        'stroke-dasharray':desc?'12 8':null,'vector-effect':'non-scaling-stroke'},g);
+      // topes arriba y abajo para que se lea de dónde a dónde mide
+      [A.y,yTop].forEach(function(y){
+        el('line',{x1:A.x-13,y1:y,x2:A.x+13,y2:y,stroke:col,'stroke-width':5,'stroke-linecap':'round',
+          'vector-effect':'non-scaling-stroke'},g);
+      });
+      el('circle',{cx:Pp.x,cy:Pp.y,r:7,fill:'#fff',stroke:col,'stroke-width':4,
+        'vector-effect':'non-scaling-stroke'},g);
+
+      // LA MEDIDA, grande y justo encima del tirante (arriba y no al lado: así la
+      // caja del dibujo no se ensancha y el ducto sale lo más grande posible)
+      var tx=el('text',{x:A.x, y:yTop-32, class:'medida-sop',
+        'text-anchor':'middle','dominant-baseline':'middle',
+        'font-family':"'Inter',sans-serif",'font-weight':900,'font-size':44,fill:col,
+        'paint-order':'stroke',stroke:'#fff','stroke-width':9,'stroke-linejoin':'round'},g);
+      tx.textContent=etq;
+    });
+    svg.appendChild(g);
+  }
+
+  function pintarControles(cont){
+    var z=document.createElement('div'); z.className='zoomc';
+    z.innerHTML='<button class="zb" title="Acercar">＋</button>'+
+                '<button class="zb" title="Alejar">−</button>'+
+                '<button class="zb" title="Ajustar a la ventana">⟲</button>';
+    z.children[0].onclick=function(){ cambiarZoom(0.2); };
+    z.children[1].onclick=function(){ cambiarZoom(-0.2); };
+    z.children[2].onclick=function(){ zoomManual=false; zoom=encuadrar($('#enDibujo')); aplicarZoom(); };
+    cont.appendChild(z);
+  }
+  function aplicarFuente(t,v){
+    t.setAttribute('font-size',v.toFixed(2));
+    t.setAttribute('stroke-width',(v*0.3).toFixed(2));
+  }
+  function encuadrar(cont){
+    var w=(cont.clientWidth||700)-40, h=(cont.clientHeight||600)-40;
+    return Math.max(0.25,Math.min(2.5, Math.min(w/vbW, h/vbH)));
+  }
+  function cambiarZoom(d){
+    zoom=Math.max(0.25,Math.min(5,zoom+d)); zoomManual=true; aplicarZoom();
+  }
+  function aplicarZoom(){
+    var svg=$('#enDibujo svg'); if(!svg) return;
+    svg.style.width=(vbW*zoom)+'px'; svg.style.height=(vbH*zoom)+'px';
+    // El texto se contra-escala para que se lea igual a cualquier zoom. Como al
+    // alejar crece en unidades del viewBox, después se mide y se encoge lo que
+    // se saldría del lienzo (p. ej. "SIN SOPORTES DEFINIDOS EN EL JSON").
+    var fs=Math.min(Math.max(SOP.FS/zoom,5),30);
+    var fsPie=Math.min(Math.max(SOP.FS/zoom,5),19);
+    $$('.cota-txt',svg).forEach(function(t){
+      if(t.id&&t.id.indexOf('ordL')===0) return;      // las etiquetas L1..Ln sí escalan con el dibujo
+      var v=t.classList.contains('pie-txt')?fsPie:fs;
+      aplicarFuente(t,v);
+      if(t.getAttribute('transform')) return;          // las cotas van rotadas: no aplica el ancho
+      try{
+        var largo=t.getComputedTextLength();
+        if(!largo) return;
+        var x=parseFloat(t.getAttribute('x'))||0;
+        var margen=8, disp;
+        if(t.getAttribute('text-anchor')==='start') disp=(vbX+vbW-margen)-x;
+        else disp=2*Math.min(x-vbX-margen, vbX+vbW-margen-x);
+        if(largo>disp && disp>0) aplicarFuente(t, Math.max(5, v*disp/largo));
+      }catch(e){}
+    });
+  }
+
+  /* ---------- lista completa del proyecto (ocasional, detrás de 📋) ----------
+     Mismas afordancias que el checklist de Corte: buscar, filtrar por estado y
+     marcar varias de golpe. No es lo primero que se ve: al entrar a Ensamble
+     sigue apareciendo el dibujo. */
+  var nodosTodo=null, filtroTodo='faltan', itemsTodo=[];
+
+  function visibleTodo(L){
+    if(filtroTodo==='faltan' && est.marcados[L.clave]) return false;
+    if(filtroTodo==='listos' && !est.marcados[L.clave]) return false;
+    var q=$('#etBus').value.trim().toLowerCase();
+    if(q){
+      var hay=(L.id+' '+L.ruta+' '+L.etiqueta).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  }
+  function montarTodo(){
+    var cont=$('#etLista'); cont.textContent=''; nodosTodo={};
+    itemsTodo=P.ensamble;
+    var fr=document.createDocumentFragment();
+    itemsTodo.forEach(function(L){
+      var e=document.createElement('div');
+      e.className='et-fila'; e.dataset.c=L.clave;
+      e.style.borderLeftColor=colorLienzo(L.idx);
+      e.innerHTML='<div class="ord" style="background:'+colorLienzo(L.idx)+'">'+esc(L.etiqueta)+'</div>'+
+        '<div class="cu"><b>'+esc(L.id)+'</b><small>'+esc(L.ruta)+'</small></div>'+
+        '<div class="check">✓</div>';
+      nodosTodo[L.clave]=e; fr.appendChild(e);
+    });
+    cont.appendChild(fr);
+    refrescarTodo();
+  }
+  function refrescarTodo(){
+    if(!nodosTodo) return;
+    var hechas=0, vis=0;
+    itemsTodo.forEach(function(L){
+      var e=nodosTodo[L.clave]; if(!e) return;
+      var m=!!est.marcados[L.clave];
+      if(m) hechas++;
+      e.classList.toggle('lista-ok',m);
+      e.hidden=!visibleTodo(L);
+      if(!e.hidden) vis++;
+    });
+    $('#etHechas').textContent=hechas; $('#etTotal').textContent=itemsTodo.length;
+    var v=$('#etLista').querySelector('.et-vacio');
+    if(!vis && !v){
+      var d=document.createElement('div'); d.className='et-vacio';
+      d.style.cssText='text-align:center;padding:36px;color:var(--tinta3);font-size:1.05rem';
+      d.textContent = filtroTodo==='faltan' ? '✓ No queda ningún lienzo pendiente.'
+                    : 'Ningún lienzo coincide con la búsqueda.';
+      $('#etLista').appendChild(d);
+    }else if(vis && v) v.remove();
+  }
+  function verLista(ver){
+    $('#enTodo').style.display=ver?'flex':'none';
+    $('#enCols').style.display=ver?'none':'flex';
+    $('#enLista').classList.toggle('on',ver);
+    if(ver) montarTodo();
+  }
+  $('#enLista').onclick=function(){ if(P) verLista($('#enTodo').style.display==='none'); };
+  $('#etVolver').onclick=function(){ verLista(false); };
+  $('#etLista').addEventListener('click',function(e){
+    var f=e.target.closest('[data-c]'); if(!f) return;
+    var L=itemsTodo.filter(function(x){return x.clave===f.dataset.c;})[0];
+    if(!L||bloqueado()) return;
+    if(est.marcados[L.clave]){ delete est.marcados[L.clave]; est.quitados[L.clave]=1; }
+    else { est.marcados[L.clave]=1; delete est.quitados[L.clave]; }
+    Prog.marcarSucio('ensamble',P.folio);
+    refrescarTodo(); pintarArbol(); contar();
+    if(sel) refrescarPanel();
+  });
+  var tbTodo=null;
+  $('#etBus').oninput=function(){ clearTimeout(tbTodo); tbTodo=setTimeout(refrescarTodo,130); };
+  $$('#vEns [data-etf]').forEach(function(b){
+    b.onclick=function(){
+      $$('#vEns [data-etf]').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on'); filtroTodo=b.dataset.etf; refrescarTodo();
+    };
+  });
+  $('#etMarcarN').onclick=async function(){
+    if(bloqueado()) return;
+    var pend=itemsTodo.filter(function(L){
+      return !est.marcados[L.clave] && nodosTodo[L.clave] && !nodosTodo[L.clave].hidden; });
+    if(!pend.length){ toast('No hay lienzos pendientes visibles',true); return; }
+    var v=await preguntar({titulo:'Marcar varios',
+      texto:'Hay '+pend.length+' lienzos pendientes visibles. ¿Cuántos marcas como listos?',
+      input:true, valor:String(pend.length), si:'Marcar'});
+    if(v==null) return;
+    var n=parseInt(v,10);
+    if(isNaN(n)||n<=0){ toast('Cantidad no válida',true); return; }
+    n=Math.min(n,pend.length);
+    for(var i=0;i<n;i++){ est.marcados[pend[i].clave]=1; delete est.quitados[pend[i].clave]; }
+    Prog.marcarSucio('ensamble',P.folio);
+    refrescarTodo(); pintarArbol(); contar();
+    if(sel) refrescarPanel();
+    toast(n+' lienzos marcados');
+  };
+
+  /* ---------- opciones (fuera del flujo del operador) ---------- */
+  $('#enOpciones').onclick=async function(){
+    if(!P) return;
+    var v=await preguntar({
+      titulo:'Opciones de Ensamble',
+      texto:'Folio '+P.folio+(est.bloq?' — FINALIZADO (no se puede marcar).':''),
+      si: est.bloq?'Desbloquear':'Finalizar',
+      no:'Borrar todo el avance', noValor:'borrar', peligro:!est.bloq});
+    if(v===true){
+      est.bloq=!est.bloq; Prog.marcarSucio('ensamble',P.folio);
+      toast(est.bloq?'Ensamble finalizado':'Ensamble desbloqueado');
+      return;
+    }
+    if(v==='borrar'){   // sólo el botón secundario; cerrar el diálogo no borra nada
+      if(est.bloq){ toast('Desbloquea el ensamble antes de borrar el avance',true); return; }
+      var ok=await preguntar({titulo:'Borrar el avance de Ensamble',
+        texto:'Se desmarcan todos los lienzos del folio '+P.folio+'. El avance de Corte no se toca.',
+        si:'Borrar', peligro:true});
+      if(!ok) return;
+      Prog.limpiar('ensamble',P.folio); est=Prog.cargar('ensamble',P.folio);
+      pintarArbol(); contar(); refrescarTodo(); if(sel){ refrescarPanel(); dibujar(); }
+      toast('Avance de Ensamble borrado');
+    }
+  };
+
+  function abrir(proy,opts){
+    if(!proy) return;
+    if(!P||P.folio!==proy.folio){ abiertos={}; $('#etBus').value=''; }
+    P=proy; est=Prog.cargar('ensamble',P.folio);
+    verLista(false);                       // el dibujo es siempre lo primero
+    $('#enTit').textContent=P.folio;
+    if(!sel || !perteneceA(sel,P)){
+      sel=null;
+      $('#enPanel').style.display='none';
+      $('#enVacio').style.display='block';
+      $('#enVacio').innerHTML='<div class="ic">👈</div><h3>Elige una pieza</h3>'+
+        '<p>Toca un ducto y luego una pieza.</p>';
+      $$('#enDibujo svg,#enDibujo .zoomc').forEach(function(n){n.remove();});
+    }
+    pintarArbol(); contar();
+    if(sel){ pintarPanel(); dibujar(); }
+  }
+  function perteneceA(s,proy){
+    for(var i=0;i<proy.sistemas.length;i++)
+      for(var j=0;j<proy.sistemas[i].ductos.length;j++)
+        if(proy.sistemas[i].ductos[j]===s.ducto) return true;
+    return false;
+  }
+  return {abrir:abrir};
+})();
+
+/* ==================================================================
+   11. ARRANQUE
+   ================================================================== */
+(async function(){
+  var motor=await Almacen.abrir();
+  var b=$('#pieAlm');
+  if(motor==='idb'){ b.className='insignia ok'; b.textContent='💾 Biblioteca persistente (IndexedDB)'; }
+  else if(motor==='ls'){ b.className='insignia med';
+    b.textContent='⚠ Biblioteca solo en memoria — el avance sí se guarda';
+    b.title='Este navegador no permite IndexedDB en modo archivo local. Vuelve a cargar la carpeta cada vez que abras; tu avance se conserva.'; }
+  else{ b.className='insignia mal'; b.textContent='⛔ Sin almacenamiento — exporta tu avance antes de cerrar'; }
+  $('#pieGuardado').textContent = Almacen.lsOK()?'Sin cambios':'El avance NO se guardará';
+
+  if(motor==='idb'){
+    var regs=await Almacen.leerProyectos();
+    regs.forEach(function(r){
+      try{
+        var P=normalizar(JSON.parse(r.crudo),r.archivo);
+        LIB.push({pk:r.pk,folio:r.folio,cliente:r.cliente,archivo:r.archivo,nombre:r.archivo,
+                  ruta:r.ruta,bytes:r.bytes,cargado:r.cargado,crudo:r.crudo,P:P,
+                  conteos:P.conteos,jerarquico:P.jerarquico,remoto:false});
+      }catch(e){}
+    });
+    LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
+  }
+
+  // Publicado en GitHub Pages: la biblioteca viene del manifiesto del sitio.
+  if(MODO_WEB){
+    var n=await cargarManifiesto();
+    if(n>0){
+      $('#pieLib').textContent=n+' proyecto(s) publicados';
+      $('#heroTxt').innerHTML='Estos son los proyectos publicados. Toca <b>CORTE</b> o '+
+        '<b>ENSAMBLE</b> en el que vayas a trabajar.';
+      $('#soltar').style.display='none';     // en la tableta no se cargan archivos a mano
+    }
+    else if(n<0){
+      $('#errCarga').style.display='block';
+      $('#errCarga').innerHTML='<b>No se encontró la lista de proyectos del sitio</b><br>'+
+        'No se pudo leer <code>proyectos.json</code>. Puedes seguir cargando archivos a mano aquí abajo. '+
+        'Si esto es el sitio publicado, revisa que el programa de subida haya corrido.';
+    }
+  }
+  Sync.arrancar();
+  pintarBiblioteca();
+
+  /* Sondeo: mientras alguien trabaja en un módulo, se relee el avance del
+     servicio compartido para ver lo que marcaron las otras tabletas. */
+  if(Sync.activo()){
+    setInterval(function(){
+      if(!actual||document.hidden) return;
+      if(vistaActual!=='corte'&&vistaActual!=='ensamble') return;
+      Prog.sincronizar(vistaActual,actual.folio,function(){
+        if(vistaActual==='corte') Corte.abrir(actual); else Ens.abrir(actual);
+        actualizarMiniProg();
+      });
+    },12000);
+    window.addEventListener('online',function(){ Sync.arrancar(); Prog.empujar(); });
+    window.addEventListener('focus',function(){
+      if(actual&&(vistaActual==='corte'||vistaActual==='ensamble'))
+        Prog.sincronizar(vistaActual,actual.folio,function(){
+          if(vistaActual==='corte') Corte.abrir(actual); else Ens.abrir(actual);
+        });
+    });
+  }
+
+  // restaurar ruta del hash
+  var h=(location.hash||'').replace(/^#\//,'').split('/');
+  if(h[0]&&h[1]&&(h[0]==='corte'||h[0]==='ensamble')){
+    var r=libPorFolio(decodeURIComponent(h[1]));
+    if(r) abrirProyecto(r,h[0]);            // descarga primero si hace falta
+    else toast('El folio '+decodeURIComponent(h[1])+' no está publicado',true);
+  }
+})();
+
+})();
+</script>
+</body>
+</html>
