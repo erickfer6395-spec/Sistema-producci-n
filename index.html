@@ -12,6 +12,7 @@
 :root{
   --corte:#3b82f6; --corte-d:#1e40af; --corte-bg:#eff6ff;
   --ens:#10b981;   --ens-d:#047857;   --ens-bg:#ecfdf5;
+  --plano:#8b5cf6; --plano-d:#6d28d9; --plano-bg:#f5f3ff;
   --acento:#8b5cf6; --ok:#10b981; --warn:#f59e0b; --mal:#ef4444;
   --bg:#f1f5f9; --card:#ffffff; --borde:#e2e8f0; --borde2:#cbd5e1;
   --tinta:#0f172a; --tinta2:#475569; --tinta3:#94a3b8;
@@ -64,6 +65,7 @@ input,select{font-family:inherit; font-size:inherit}
 .mod:disabled{opacity:.35; cursor:not-allowed}
 .mod.m-corte.on{background:var(--corte); border-color:var(--corte); color:#fff}
 .mod.m-ens.on{background:var(--ens); border-color:var(--ens); color:#fff}
+.mod.m-plano.on{background:var(--plano); border-color:var(--plano); color:#fff}
 
 .proy-activo{margin-left:auto; display:flex; align-items:center; gap:12px; min-width:0}
 .mini-prog{display:flex; gap:8px}
@@ -378,6 +380,73 @@ select.filtro{
 .centro-msg h3{margin:0 0 8px; color:var(--tinta); font-size:1.1rem}
 .centro-msg p{margin:0 0 8px; line-height:1.55}
 
+/* ============ FICHA DEL DUCTO (dentro del visor de dibujo) ============
+   Lo unico que se anade al dibujo: el perimetro, y los accesorios que van en
+   ESTE ducto cuando el .json lo dice. Barra ancha y de letra grande porque se
+   lee de pie y de lejos. */
+.ficha-duc{
+  order:1; flex:0 0 auto; width:100%; max-width:980px;
+  background:var(--card); border:2px solid var(--borde); border-radius:14px;
+  padding:10px 12px; display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap;
+  box-shadow:var(--sombra);
+}
+/* Dentro de la ficha los botones de zoom dejan de flotar. */
+.zoomc.en-ficha{order:2; position:static; background:none; border:0; box-shadow:none;
+  padding:0; margin-left:auto; gap:6px}
+.zoomc.en-ficha .zb{width:44px; height:44px; font-size:1.35rem}
+/* Orden fijo: arriba el perímetro y el zoom, abajo los accesorios. Sin esto,
+   en una columna estrecha la barra se partía en tres renglones y se comía
+   el sitio del dibujo. */
+.fd-per{order:1; display:flex; align-items:baseline; gap:10px; flex:0 0 auto}
+.fd-per i{font-style:normal; font-size:.76rem; font-weight:800; letter-spacing:1.2px;
+  text-transform:uppercase; color:var(--tinta3)}
+.fd-per b{font-size:1.5rem; font-weight:900; letter-spacing:-.5px; color:var(--tinta)}
+.fd-acc{order:3; width:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.fd-acc > i{font-style:normal; font-size:.76rem; font-weight:800; letter-spacing:1.2px;
+  text-transform:uppercase; color:var(--tinta3)}
+.acc-chip{
+  display:inline-flex; align-items:center; gap:7px; border-radius:11px; padding:7px 13px;
+  font-weight:800; font-size:1.02rem; line-height:1.15; border:2px solid; white-space:nowrap;
+}
+.acc-chip u{text-decoration:none; font-weight:900; font-size:1.1rem}
+.acc-tapa {background:#eff6ff; border-color:#93c5fd; color:#1e40af}
+.acc-fondo{background:#f1f5f9; border-color:#cbd5e1; color:#334155}
+.acc-red  {background:#fff7ed; border-color:#fdba74; color:#9a3412}
+.acc-codo {background:#faf5ff; border-color:#d8b4fe; color:#6b21a8}
+.acc-inj  {background:#ecfeff; border-color:#67e8f9; color:#155e75}
+.acc-otro {background:#fefce8; border-color:#fde68a; color:#854d0e}
+/* Aviso de que el archivo no dice a que ducto va cada accesorio. */
+.fd-nota{order:4; width:100%; font-size:.82rem; font-weight:600; color:var(--tinta3); line-height:1.35}
+
+/* ============ PLANO ============ */
+.pl-acc{display:flex; align-items:center; gap:8px; flex:0 0 auto}
+.pl-acc .btn{text-decoration:none}
+.plano-cuerpo{
+  flex:1 1 auto; overflow:auto; background:#475569; padding:18px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:18px;
+}
+.plano-pag{
+  background:#fff; box-shadow:0 8px 24px rgba(0,0,0,.35); border-radius:3px;
+  margin:0 auto; line-height:0; width:100%; max-width:1180px;
+}
+.plano-pag img{display:block; width:100%; height:auto; border-radius:3px}
+.plano-num{
+  margin:0 auto; color:#e2e8f0; font-size:.82rem; font-weight:700; letter-spacing:1px;
+  text-transform:uppercase;
+}
+.plano-marco{
+  width:100%; max-width:1180px; margin:0 auto; height:78vh; border:0; background:#fff;
+  border-radius:3px; box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.plano-vacio{
+  margin:auto; text-align:center; color:#e2e8f0; max-width:560px; padding:30px;
+  background:rgba(15,23,42,.35); border-radius:14px;
+}
+.plano-vacio .ic{font-size:2.6rem; margin-bottom:10px}
+.plano-vacio h3{margin:0 0 10px; color:#fff; font-size:1.2rem}
+.plano-vacio p{margin:0 0 8px; line-height:1.6; font-size:.98rem}
+.plano-vacio code{background:rgba(255,255,255,.14); padding:2px 7px; border-radius:6px}
+
 /* ============ MODAL / TOAST ============ */
 .velo{position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; place-items:center; z-index:200; padding:20px}
 .velo.on{display:grid}
@@ -417,6 +486,8 @@ select.filtro{
              font-weight:800; font-size:10.5pt; display:flex; justify-content:space-between; gap:8pt}
   .imp-sop{font-weight:800; font-size:10pt; white-space:nowrap}
   .imp-duc-d{font-size:8.5pt; font-weight:400; padding:2pt 5pt; border:.8pt solid #999; border-top:0}
+  .imp-acc{font-size:9pt; font-weight:700; padding:2.5pt 5pt; border:.8pt solid #999; border-top:0;
+           background:#f7f7f7}
 
   .imp-pz{break-inside:avoid; page-break-inside:avoid}
   .imp-pz-h{font-weight:700; font-size:9.5pt; padding:3pt 5pt 1pt}
@@ -435,6 +506,18 @@ select.filtro{
   .imp-nada{padding:14pt; text-align:center; font-size:11pt}
 }
 
+/* Con tres módulos (Corte, Ensamble y Plano) la barra ya no cabe en una
+   tableta de 768: primero se aprietan los botones y, si aún no cabe, se
+   quitan los porcentajes, que también están en la biblioteca. */
+@media (max-width:1040px){
+  .mod{padding:0 14px; font-size:.95rem; gap:7px}
+  .sel-proy{max-width:190px}
+}
+@media (max-width:900px){
+  /* !important porque setActual pone display en el propio elemento y un
+     estilo en línea le gana a la media query. */
+  .proy-activo{display:none !important}
+}
 @media (max-width:1250px){
   .arbol{width:262px} .lienzo-panel{width:330px}
   .duc-h{font-size:1.05rem; padding:13px 14px; min-height:52px}
@@ -467,6 +550,7 @@ select.filtro{
   <nav class="modulos">
     <button class="mod m-corte" id="tabCorte" data-ir="corte" disabled><span>✂️</span>CORTE</button>
     <button class="mod m-ens" id="tabEns" data-ir="ensamble" disabled><span>🔧</span>ENSAMBLE</button>
+    <button class="mod m-plano" id="tabPlano" data-ir="plano" disabled><span>📐</span>PLANO</button>
   </nav>
 
   <div class="proy-activo" id="proyActivo" style="display:none">
@@ -483,18 +567,20 @@ select.filtro{
     <div class="scroll"><div class="carga-wrap">
       <div class="hero">
         <h1>Biblioteca de proyectos</h1>
-        <p id="heroTxt">Carga los <b>.json</b> una sola vez. Quedan disponibles para Corte y para Ensamble.</p>
+        <p id="heroTxt">Carga los <b>.json</b> una sola vez. Quedan disponibles para Corte, Ensamble y Plano.</p>
       </div>
 
       <div class="soltar" id="soltar">
         <div class="ic">📂</div>
         <h3>Arrastra aquí tus archivos o carpetas</h3>
-        <p>Acepta un archivo, varios, o la carpeta <code>output</code> completa</p>
+        <p>Acepta un archivo, varios, o la carpeta <code>output</code> completa.
+           El <b>plano</b> es el <code>.pdf</code> que lleva el folio en el nombre,
+           tal como sale del CAD: <code>PLANO_DTI-260707.PDF</code>.</p>
         <div class="acciones">
-          <button class="btn pri" id="btnArchivos">Elegir archivos .json</button>
+          <button class="btn pri" id="btnArchivos">Elegir archivos .json o .pdf</button>
           <button class="btn" id="btnCarpeta">Elegir carpeta completa</button>
         </div>
-        <input type="file" id="inArchivos" accept=".json,application/json" multiple>
+        <input type="file" id="inArchivos" accept=".json,application/json,.pdf,application/pdf" multiple>
         <input type="file" id="inCarpeta" webkitdirectory directory multiple>
       </div>
 
@@ -576,6 +662,7 @@ select.filtro{
     <div class="ens-cols" id="enCols">
       <aside class="arbol" id="enArbol"></aside>
       <div class="dibujo" id="enDibujo">
+        <div class="ficha-duc" id="enFicha" style="display:none"></div>
         <div class="centro-msg" id="enVacio">
           <div class="ic">👈</div>
           <h3>Elige una pieza</h3>
@@ -590,6 +677,22 @@ select.filtro{
         </div>
       </aside>
     </div>
+  </section>
+
+  <!-- ================= PLANO ================= -->
+  <section class="vista" id="vPlano">
+    <div class="cab">
+      <div class="cab-top">
+        <div class="cab-tit"><h2 id="plTit">Plano</h2><span id="plSub">—</span></div>
+        <div class="pl-acc">
+          <button class="btn sm" id="plMenos" title="Alejar">−</button>
+          <button class="btn sm" id="plMas" title="Acercar">+</button>
+          <a class="btn sm" id="plAbrir" target="_blank" rel="noopener"
+             style="display:none">⤢ Abrir el PDF</a>
+        </div>
+      </div>
+    </div>
+    <div class="plano-cuerpo" id="plCuerpo"></div>
   </section>
 </main>
 
@@ -834,7 +937,44 @@ var Almacen=(function(){
       }catch(e){ res(null); }
     });
   }
+  /* Plano en PDF cargado a mano. IndexedDB guarda el Blob tal cual; si el
+     navegador no lo permite (Chrome bloquea IndexedDB en archivo local) el
+     plano vive sólo mientras la pestaña esté abierta. */
+  function guardarBlob(clave,blob,extra){
+    if(motor!=='idb') return Promise.resolve(false);
+    return new Promise(function(res){
+      try{
+        var reg={k:'blob@'+clave, blob:blob, ts:Date.now()};
+        for(var x in (extra||{})) reg[x]=extra[x];
+        var tx=db.transaction('cache','readwrite');
+        tx.objectStore('cache').put(reg);
+        tx.oncomplete=function(){ res(true); }; tx.onerror=function(){ res(false); };
+      }catch(e){ res(false); }
+    });
+  }
+  function leerBlob(clave){
+    if(motor!=='idb') return Promise.resolve(null);
+    return new Promise(function(res){
+      try{
+        var tx=db.transaction('cache','readonly');
+        var q=tx.objectStore('cache').get('blob@'+clave);
+        q.onsuccess=function(){ res(q.result||null); };
+        q.onerror=function(){ res(null); };
+      }catch(e){ res(null); }
+    });
+  }
+  function borrarBlob(clave){
+    if(motor!=='idb') return Promise.resolve();
+    return new Promise(function(res){
+      try{
+        var tx=db.transaction('cache','readwrite');
+        tx.objectStore('cache').delete('blob@'+clave);
+        tx.oncomplete=function(){ res(); }; tx.onerror=function(){ res(); };
+      }catch(e){ res(); }
+    });
+  }
   return { abrir:abrir, motor:function(){return motor;}, lsOK:function(){return lsOK;},
+           guardarBlob:guardarBlob, leerBlob:leerBlob, borrarBlob:borrarBlob,
            guardarProyecto:guardarProyecto, borrarProyecto:borrarProyecto, leerProyectos:leerProyectos,
            vaciarProyectos:vaciarProyectos, getLS:getLS, setLS:setLS, delLS:delLS, clavesLS:clavesLS,
            guardarCache:guardarCache, leerCache:leerCache };
@@ -866,7 +1006,7 @@ function normalizar(json,archivo){
           ((archivo||'').replace(/\.json$/i,'')||'SIN-FOLIO'),
     cliente:(json&&json.cliente)||(json&&json.metadata&&json.metadata.cliente)||'—',
     sistemas:[], corte:[], ensamble:[], accesorios:[],
-    jerarquico:formato==='jerarquico', avisos:[], formas:{}
+    jerarquico:formato==='jerarquico', avisos:[], formas:{}, hayUbicacionAcc:false
   };
 
   if(formato==='jerarquico'){
@@ -879,7 +1019,7 @@ function normalizar(json,archivo){
           forma:duc.forma||'circular',
           perimetro_cm:(typeof duc.perimetro_cm==='number')?duc.perimetro_cm:null,
           soportes:Array.isArray(duc.soportes)?duc.soportes:[],
-          piezas:[], total:0
+          piezas:[], total:0, accesorios:[]
         };
         D.grupoSop = D.soportes.length?D.soportes[0]:null;
         D.horas = (D.grupoSop&&Array.isArray(D.grupoSop.horas))
@@ -950,7 +1090,35 @@ function normalizar(json,archivo){
         nPorTipo[A.tipo]=(nPorTipo[A.tipo]||0)+1;
         A.ordTipo=nPorTipo[A.tipo];
         A.clave=hash53('A|'+P.folio+'|S'+S.id+'|'+A.tipo+'|#'+A.ordTipo);
+        /* A qué ductos va. CAM lo saca de su propio modelo: la tapa la crea el
+           ducto, el fondo queda anotado al nacer, y codo, reducción e injerto
+           guardan los dos ductos que unen. Los .json anteriores a esa versión
+           no lo traen: entonces el accesorio se queda a nivel de sistema, que
+           es lo único que el archivo permite afirmar. */
+        A.ductos=[];
+        if(Array.isArray(a.ductos)) a.ductos.forEach(function(d){
+          if(d==null) return;
+          var num=(typeof d==='object')?d.numero:d;
+          if(num==null||num==='') return;
+          var n=(typeof d==='object'&&Number(d.cantidad)>0)?Number(d.cantidad):1;
+          A.ductos.push({numero:String(num), cantidad:n});
+        });
         S.accesorios.push(A); P.accesorios.push(A); P.corte.push(A);
+      });
+
+      /* Se cuelga cada accesorio de su ducto. Lo que no se pudo ubicar queda en
+         S.accSinUbicar y se muestra como «en este sistema». */
+      var ductoPorNumero={};
+      S.ductos.forEach(function(D){ ductoPorNumero[String(D.numero)]=D; });
+      S.accSinUbicar=[];
+      S.accesorios.forEach(function(A){
+        var ubicado=false;
+        A.ductos.forEach(function(d){
+          var D=ductoPorNumero[d.numero];
+          if(D){ D.accesorios.push({acc:A, cantidad:d.cantidad}); ubicado=true; }
+        });
+        if(!ubicado) S.accSinUbicar.push(A);
+        else P.hayUbicacionAcc=true;
       });
       P.sistemas.push(S);
     });
@@ -1435,6 +1603,185 @@ function totalCorte(P){
 var LIB=[];          // {pk, folio, cliente, archivo, bytes, crudo, P}
 var actual=null;     // proyecto normalizado activo
 var vistaActual='carga';
+var actualReg=null;      // la ficha de biblioteca del proyecto abierto (trae el plano)
+
+/* ==================================================================
+   5b. ACCESORIOS: cómo se nombran y se agrupan
+   El operador no necesita la medida del accesorio (esa va en Corte y en la
+   hoja impresa): necesita saber si esta pieza lleva tapa, codo o reducción.
+   ================================================================== */
+/* Nombres cortos, los que se usan de viva voz en el taller: «codo», no
+   «gajo de codo». Además caben en un renglón. */
+var ACC_SING={'Reduccion':'REDUCCIÓN','Reducción':'REDUCCIÓN','Gajo de codo':'CODO',
+              'Stop Pop':'STOP POP'};
+var ACC_PLUR={'Tapa':'TAPAS','Fondo':'FONDOS','Reduccion':'REDUCCIONES','Reducción':'REDUCCIONES',
+              'Gajo de codo':'CODOS','Injerto':'INJERTOS','Boquilla':'BOQUILLAS',
+              'Dona':'DONAS','Stop Pop':'STOP POPS'};
+var ACC_CLASE={'Tapa':'acc-tapa','Fondo':'acc-fondo','Reduccion':'acc-red','Reducción':'acc-red',
+               'Gajo de codo':'acc-codo','Injerto':'acc-inj'};
+var ACC_ICONO={'Tapa':'⬤','Fondo':'▬','Reduccion':'◣','Reducción':'◣','Gajo de codo':'⌐',
+               'Injerto':'⑂','Boquilla':'✦','Dona':'◎','Stop Pop':'■'};
+
+function nombreAcc(tipo,n){
+  var t=String(tipo||'Accesorio');
+  if(n>1) return ACC_PLUR[t]||(t.toUpperCase()+'S');
+  return ACC_SING[t]||t.toUpperCase();
+}
+/* «lista» son entradas {acc,cantidad} (las que van en un ducto) o accesorios
+   sueltos (los del sistema). Se juntan por tipo y se suman. */
+function agruparAcc(lista){
+  var orden=[], porTipo={};
+  (lista||[]).forEach(function(x){
+    var A=x.acc||x, n=(x.cantidad!=null?x.cantidad:A.cantidad)||1;
+    if(!porTipo[A.tipo]){ porTipo[A.tipo]={tipo:A.tipo,n:0}; orden.push(porTipo[A.tipo]); }
+    porTipo[A.tipo].n+=n;
+  });
+  return orden;
+}
+function chipsAcc(lista){
+  return agruparAcc(lista).map(function(g){
+    return '<span class="acc-chip '+(ACC_CLASE[g.tipo]||'acc-otro')+'">'+
+           (ACC_ICONO[g.tipo]||'◆')+(g.n>1?' <u>'+g.n+'</u>':'')+' '+
+           esc(nombreAcc(g.tipo,g.n))+'</span>';
+  }).join('');
+}
+function textoAcc(lista){
+  return agruparAcc(lista).map(function(g){
+    return (g.n>1?(g.n+' '):'')+nombreAcc(g.tipo,g.n);
+  }).join(' · ');
+}
+
+/* ==================================================================
+   5c. PLANO
+   El plano es un PDF que viaja junto al .json. En el sitio publicado el
+   programa de subida ya lo dejó convertido a imágenes: así se ve en
+   cualquier tableta sin depender de que el navegador sepa abrir un PDF
+   dentro de la página (Chrome de Android no lo hace). En modo local
+   (doble clic al archivo) se muestra el PDF tal cual.
+   ================================================================== */
+var Plano=(function(){
+  var zoom=1, reg=null;
+
+  /* Manda el plano PUBLICADO. Un PDF cargado a mano en la tableta sólo se usa
+     cuando el proyecto no trae plano del sitio (o se trabaja en local): si
+     fuera al revés, un PDF viejo suelto en una tableta taparía para siempre
+     el plano bueno que se acabara de subir. */
+  function datos(r){
+    if(!r) return null;
+    var p=r.plano;
+    if(p&&Array.isArray(p.paginas)&&p.paginas.length)
+      return {tipo:'img', paginas:p.paginas, url:p.pdf||'', bytes:p.bytes||0};
+    if(p&&p.pdf) return {tipo:'pdf', url:p.pdf, bytes:p.bytes||0};
+    if(r.planoURL) return {tipo:'local', url:r.planoURL,
+                           nombre:r.planoArchivo||'', bytes:r.planoBytes||0};
+    return null;
+  }
+  function tiene(r){ return !!datos(r); }
+
+  function baseAncho(){
+    var c=$('#plCuerpo');
+    return Math.max(260, Math.min(1180, (c.clientWidth||900)-36));
+  }
+  function aplicarZoom(){
+    var w=Math.round(baseAncho()*zoom);
+    $$('#plCuerpo .pl-ancho').forEach(function(n){
+      n.style.width=w+'px'; n.style.maxWidth='none';
+    });
+    $('#plMenos').disabled=(zoom<=0.5);
+    $('#plMas').disabled=(zoom>=4);
+  }
+  function cambiarZoom(d){
+    zoom=Math.min(4,Math.max(0.5,Math.round((zoom+d)*100)/100));
+    aplicarZoom();
+  }
+
+  function abrir(r){
+    reg=r; zoom=1;
+    var d=datos(r), cont=$('#plCuerpo'), a=$('#plAbrir');
+    $('#plTit').textContent=(r&&r.folio)?('Plano · '+r.folio):'Plano';
+    cont.innerHTML='';
+
+    if(!d){
+      $('#plSub').textContent='sin plano';
+      a.style.display='none';
+      $('#plMas').disabled=$('#plMenos').disabled=true;
+      cont.innerHTML='<div class="plano-vacio"><div class="ic">📐</div>'+
+        '<h3>Este proyecto no trae plano</h3>'+
+        (MODO_WEB
+          ? '<p>El plano se publica junto con el proyecto. Si ya existe, avisa para que '+
+            'lo suban otra vez.</p>'
+          : '<p>Carga con 📂 el PDF del plano. Vale el nombre que sale del CAD, '+
+            'mientras lleve el folio: <code>PLANO_'+esc((r&&r.folio)||'FOLIO')+'.PDF</code>.</p>')+
+        '</div>';
+      return;
+    }
+
+    var partes=[];
+    if(d.tipo==='img') partes.push(d.paginas.length+(d.paginas.length===1?' página':' páginas'));
+    if(d.bytes) partes.push(Math.max(1,Math.round(d.bytes/1024))+' KB');
+    if(d.tipo==='local') partes.push('cargado en esta tableta');
+    $('#plSub').textContent=partes.join(' · ')||'—';
+
+    if(d.url){ a.href=d.url; a.style.display=''; } else a.style.display='none';
+
+    if(d.tipo==='img'){
+      var h=[];
+      d.paginas.forEach(function(pg,i){
+        var ruta=(typeof pg==='object')?pg.a:pg;
+        var w=(typeof pg==='object'&&pg.w)?pg.w:0, alto=(typeof pg==='object'&&pg.h)?pg.h:0;
+        if(d.paginas.length>1) h.push('<div class="plano-num">Página '+(i+1)+' de '+d.paginas.length+'</div>');
+        // width/height dichos de antemano: la hoja no salta al ir cargando.
+        h.push('<div class="plano-pag pl-ancho"><img src="'+esc(ruta)+'" alt="Plano, página '+(i+1)+'"'+
+               (w&&alto?(' width="'+w+'" height="'+alto+'"'):'')+
+               ' loading="'+(i<2?'eager':'lazy')+'"></div>');
+      });
+      cont.innerHTML=h.join('');
+    }else{
+      cont.innerHTML='<iframe class="plano-marco pl-ancho" src="'+esc(d.url)+'" title="Plano"></iframe>'+
+        '<div class="plano-num">Si no se ve aquí, usa «Abrir el PDF»</div>';
+    }
+    aplicarZoom();
+  }
+
+  $('#plMas').onclick=function(){ cambiarZoom(0.25); };
+  $('#plMenos').onclick=function(){ cambiarZoom(-0.25); };
+  window.addEventListener('resize',function(){ if(vistaActual==='plano') aplicarZoom(); });
+
+  return {abrir:abrir, tiene:tiene};
+})();
+
+/* ---------- planos cargados a mano (modo local) ----------
+   Un PDF es el plano de un proyecto cuando su nombre LLEVA EL FOLIO. Así entran
+   tal cual los nombres que salen solos del CAD —«PLANO_DTI-260707.PDF»,
+   «PLANO-DTI-260258_26 MAYO 2026.pdf»— y también «DTI-260707.pdf».
+   Las minutas y las etiquetas del CAM quedan fuera A PROPÓSITO: si se colaran,
+   producción vería el documento equivocado. */
+function proyectoDelPlano(nombre){
+  var base=String(nombre||'').replace(/\.pdf$/i,'').toLowerCase();
+  if(/minuta|etiqueta/.test(base)) return null;
+  var mejor=null;
+  LIB.forEach(function(r){
+    var f=String(r.folio||'').toLowerCase();
+    if(!f) return;
+    for(var i=base.indexOf(f); i>=0; i=base.indexOf(f,i+1)){
+      var antes=(i>0)?base.charAt(i-1):'';
+      var despues=base.charAt(i+f.length);
+      // El folio tiene que aparecer ENTERO: «DTI-26070» no vale por «DTI-260707».
+      if(/[a-z0-9]/.test(antes)||/[a-z0-9]/.test(despues)) continue;
+      // Si en el nombre cabe más de un folio, gana el más largo.
+      if(!mejor||f.length>String(mejor.folio).length) mejor=r;
+      return;
+    }
+  });
+  return mejor;
+}
+function ponerPlanoLocal(reg,file){
+  if(reg.planoURL){ try{ URL.revokeObjectURL(reg.planoURL); }catch(e){} }
+  reg.planoBlob=file; reg.planoArchivo=file.name; reg.planoBytes=file.size;
+  reg.planoURL=URL.createObjectURL(file);
+  Almacen.guardarBlob('plano:'+reg.folio,file,
+    {folio:reg.folio, nombre:file.name, bytes:file.size});
+}
 
 function libPorFolio(folio){
   for(var i=0;i<LIB.length;i++) if(LIB[i].folio===folio) return LIB[i];
@@ -1442,9 +1789,11 @@ function libPorFolio(folio){
 }
 function setActual(reg){
   if(reg&&!reg.P){ console.warn('setActual con un proyecto sin descargar:',reg.folio); }
+  actualReg=reg||null;
   actual=reg?reg.P:null;
   $('#tabCorte').disabled=!actual;
   $('#tabEns').disabled=!actual||!actual.jerarquico;
+  $('#tabPlano').disabled=!actual||!Plano.tiene(actualReg);
   $('#proyActivo').style.display=actual?'flex':'none';
   $('#spFolio').textContent=actual?actual.folio:'Sin proyecto';
   $('#spCliente').textContent=actual?actual.cliente
@@ -1461,15 +1810,18 @@ function actualizarMiniProg(){
 /* ==================================================================
    6. NAVEGACION
    ================================================================== */
+var VISTAS={carga:'#vCarga',corte:'#vCorte',ensamble:'#vEns',plano:'#vPlano'};
+var PESTANAS={carga:'#tabCarga',corte:'#tabCorte',ensamble:'#tabEns',plano:'#tabPlano'};
 function ir(v,opts){
   if(v==='corte'&&!actual) return;
   if(v==='ensamble'&&(!actual||!actual.jerarquico)) return;
+  if(v==='plano'&&!actual) return;
+  if(!VISTAS[v]) return;
   vistaActual=v;
   $$('.vista').forEach(function(s){ s.classList.remove('on'); });
   $$('.mod,.btn-ic').forEach(function(t){ t.classList.remove('on'); });
-  ({carga:'#vCarga',corte:'#vCorte',ensamble:'#vEns'})[v] &&
-    $(({carga:'#vCarga',corte:'#vCorte',ensamble:'#vEns'})[v]).classList.add('on');
-  $(({carga:'#tabCarga',corte:'#tabCorte',ensamble:'#tabEns'})[v]).classList.add('on');
+  $(VISTAS[v]).classList.add('on');
+  $(PESTANAS[v]).classList.add('on');
   try{
     var nuevo='#/'+v+(actual&&v!=='carga'?('/'+encodeURIComponent(actual.folio)):'');
     if(location.hash!==nuevo){ ignorarHash=true; location.hash=nuevo; }
@@ -1477,6 +1829,7 @@ function ir(v,opts){
   if(v==='carga') pintarBiblioteca();
   if(v==='corte') Corte.abrir(actual);
   if(v==='ensamble') Ens.abrir(actual,opts);
+  if(v==='plano') Plano.abrir(actualReg);
   if(actual&&(v==='corte'||v==='ensamble')&&Sync.activo()){
     Prog.sincronizar(v,actual.folio,function(){
       if(vistaActual==='corte') Corte.abrir(actual);
@@ -1549,9 +1902,11 @@ function leerTexto(file){
 }
 
 async function ingerir(files){
-  var jsons=Array.prototype.slice.call(files).filter(function(f){
-    return /\.json$/i.test(f.name); });
-  if(!jsons.length){ toast('No se encontraron archivos .json',true); return; }
+  var todos=Array.prototype.slice.call(files);
+  var jsons=todos.filter(function(f){ return /\.json$/i.test(f.name); });
+  var pdfs =todos.filter(function(f){ return /\.pdf$/i.test(f.name); });
+  if(!jsons.length&&!pdfs.length){
+    toast('No se encontraron archivos .json ni .pdf',true); return; }
 
   var nuevos=0, reempl=0, malos=[], reabrir=null;
   for(var i=0;i<jsons.length;i++){
@@ -1576,12 +1931,32 @@ async function ingerir(files){
         ruta:reg.ruta,bytes:reg.bytes,cargado:reg.cargado,crudo:txt});
     }catch(e){ malos.push(f.name+' ('+e.message+')'); }
   }
+  /* Los planos van al final: para colgar un PDF de su proyecto, ese proyecto
+     ya tiene que estar en la biblioteca. */
+  var planos=0, puestos={};
+  // Del más viejo al más nuevo: si vienen varias revisiones del mismo folio,
+  // la última en asignarse (la más reciente) es la que queda. Es la misma
+  // regla que usa el programa de subida.
+  pdfs.sort(function(a,b){ return (a.lastModified||0)-(b.lastModified||0); });
+  pdfs.forEach(function(f){
+    var reg=proyectoDelPlano(f.name);
+    if(!reg){
+      malos.push(f.name+' (no coincide con ningún proyecto cargado: el plano '+
+                 'tiene que llevar el folio en el nombre)');
+      return;
+    }
+    ponerPlanoLocal(reg,f);
+    if(!puestos[reg.folio]){ puestos[reg.folio]=1; planos++; }
+  });
+
   LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
   if(reabrir){ setActual(reabrir); if(vistaActual!=='carga') ir(vistaActual); }
+  else if(planos&&actual){ var ra=libPorFolio(actual.folio); if(ra) setActual(ra); }
   pintarBiblioteca();
   var msg=nuevos+' proyecto(s) cargado(s)';
   if(reempl) msg+=', '+reempl+' actualizado(s)';
-  if(malos.length) msg+=' · '+malos.length+' con error';
+  if(planos) msg+=' · '+planos+' plano(s)';
+  if(malos.length) msg+=' · '+malos.length+' con aviso';
   toast(msg, malos.length>0);
   if(malos.length){
     console.warn('Archivos con error:\n'+malos.join('\n'));
@@ -1652,8 +2027,14 @@ async function cargarManifiesto(){
                archivo:p.archivo||('datos/'+p.folio+'.json'),
                nombre:String(p.archivo||p.folio).split('/').pop(),
                bytes:p.bytes||0, sha:p.sha||'', jerarquico:p.jerarquico!==false,
-               conteos:p.conteos||{}, remoto:true, P:null};
-      if(ya){ LIB[LIB.indexOf(ya)]=reg; } else { LIB.push(reg); }
+               conteos:p.conteos||{}, remoto:true, P:null,
+               plano:(p.plano&&typeof p.plano==='object')?p.plano:null};
+      if(ya){
+        // un PDF que esta tableta hubiera cargado a mano no se pierde
+        if(ya.planoURL){ reg.planoURL=ya.planoURL; reg.planoBlob=ya.planoBlob;
+                         reg.planoArchivo=ya.planoArchivo; reg.planoBytes=ya.planoBytes; }
+        LIB[LIB.indexOf(ya)]=reg;
+      } else { LIB.push(reg); }
       n++;
     });
     LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
@@ -1737,6 +2118,7 @@ function pintarBiblioteca(){
       if(noCirc.length) chips.push('<span class="chip info">'+noCirc.join(', ')+'</span>');
       if(r.P.sinSoportes) chips.push('<span class="chip av">'+r.P.sinSoportes+' ductos sin soportes</span>');
     }else if(r.remoto) chips.push('<span class="chip info">☁ en el sitio</span>');
+    if(Plano.tiene(r)) chips.push('<span class="chip info">📐 con plano</span>');
     if(res.corte.bloq) chips.push('<span class="chip lock">🔒 Corte finalizado</span>');
     if(res.ensamble.bloq) chips.push('<span class="chip lock">🔒 Ensamble finalizado</span>');
 
@@ -1774,7 +2156,9 @@ function pintarBiblioteca(){
       if(i<0){ var act=libPorFolio(r.folio); i=act?LIB.indexOf(act):-1; }
       if(i<0){ toast('Ese proyecto ya no está en la biblioteca',true); pintarBiblioteca(); return; }
       LIB.splice(i,1);
+      if(r.planoURL){ try{ URL.revokeObjectURL(r.planoURL); }catch(e){} }
       await Almacen.borrarProyecto(r.pk);
+      Almacen.borrarBlob('plano:'+r.folio);
       if(actual&&actual.folio===r.folio){ setActual(null); ir('carga'); }
       pintarBiblioteca(); toast('Proyecto quitado');
     };
@@ -2152,12 +2536,36 @@ var Ens=(function(){
       'Este proyecto no trae ductos.</div>';
   }
 
+  /* ---------- ficha del ducto ----------
+     Lo único que se añade al visor: el perímetro, y qué accesorios van en este
+     ducto. Los .json que no traen esa ubicación se muestran a nivel de sistema
+     y se dice que son del sistema: es lo único que el archivo permite afirmar. */
+  function pintarFicha(){
+    var c=$('#enFicha');
+    if(!sel){ c.style.display='none'; c.innerHTML=''; return; }
+    var D=sel.ducto, S=P.sistemas[D.sistemaIdx];
+    // Un perímetro de 0 es «no viene en el archivo», no una medida: el dibujo
+    // ya lo trata así, y la ficha tiene que decir lo mismo.
+    var h=['<span class="fd-per"><i>Perímetro</i><b>'+
+           (D.perimetro_cm>0?(fmt(D.perimetro_cm)+' cm'):'sin dato')+'</b></span>'];
+
+    if(D.accesorios&&D.accesorios.length){
+      h.push('<span class="fd-acc"><i>Lleva</i>'+chipsAcc(D.accesorios)+'</span>');
+    }else if(S&&!P.hayUbicacionAcc&&S.accesorios.length){
+      h.push('<span class="fd-acc"><i>En este sistema</i>'+chipsAcc(S.accesorios)+'</span>');
+      h.push('<span class="fd-nota">Este archivo no dice en qué ducto va cada accesorio: '+
+             'los de arriba son los de todo el sistema '+esc(S.id)+'.</span>');
+    }
+    c.innerHTML=h.join('');
+    c.style.display='flex';
+  }
+
   /* ---------- seleccion ---------- */
   function seleccionar(D,pz){
     sel={ducto:D,pieza:pz};
     $('#enVacio').style.display='none';
     $('#enPanel').style.display='flex';
-    pintarArbol(); pintarPanel(); dibujar();
+    pintarArbol(); pintarPanel(); pintarFicha(); dibujar();
   }
 
   function siguientePieza(){
@@ -2458,7 +2866,11 @@ var Ens=(function(){
     z.children[0].onclick=function(){ cambiarZoom(0.2); };
     z.children[1].onclick=function(){ cambiarZoom(-0.2); };
     z.children[2].onclick=function(){ zoomManual=false; zoom=encuadrar($('#enDibujo')); aplicarZoom(); };
-    cont.appendChild(z);
+    // Van dentro de la ficha: flotando en la esquina se montaban encima del
+    // perímetro en cuanto la pantalla se estrechaba.
+    var ficha=$('#enFicha');
+    if(ficha && ficha.style.display!=='none'){ z.className='zoomc en-ficha'; ficha.appendChild(z); }
+    else cont.appendChild(z);
   }
   function aplicarFuente(t,v){
     t.setAttribute('font-size',v.toFixed(2));
@@ -2626,6 +3038,9 @@ var Ens=(function(){
     P.sistemas.forEach(function(S){
       if(!S.ductos.length) return;
       if(P.sistemas.length>1) h.push('<div class="imp-sis">Sistema '+esc(S.id)+'</div>');
+      if(!P.hayUbicacionAcc&&S.accesorios.length)
+        h.push('<div class="imp-acc">ACCESORIOS DEL SISTEMA '+esc(S.id)+': '+
+               esc(textoAcc(S.accesorios))+'</div>');
       S.ductos.forEach(function(D){
         var tot=0, hh=0;
         D.piezas.forEach(function(pz){ pz.lienzos.forEach(function(l){
@@ -2634,10 +3049,14 @@ var Ens=(function(){
         h.push('<div class="imp-duc-h"><span>Ducto '+esc(D.numero)+'</span>'+
                '<span class="imp-sop">'+esc(textoSoportes(D))+'</span></div>');
         var d=[NOMBRE_FORMA[clasificarForma(D.forma)]];
-        if(D.perimetro_cm!=null) d.push('perímetro '+fmt(D.perimetro_cm)+' cm');
+        // Igual que en la ficha del dibujo: un perímetro de 0 no es una medida.
+        d.push(D.perimetro_cm>0 ? ('perímetro '+fmt(D.perimetro_cm)+' cm')
+                                : 'sin perímetro en el archivo');
         if(clasificarForma(D.forma)==='circular'&&D.diametro_cm) d.push('Ø '+fmt(D.diametro_cm)+' cm');
         d.push(hh+' de '+tot+' lienzos marcados');
         h.push('<div class="imp-duc-d">'+esc(d.join(' · '))+'</div>');
+        if(D.accesorios&&D.accesorios.length)
+          h.push('<div class="imp-acc">LLEVA: '+esc(textoAcc(D.accesorios))+'</div>');
 
         D.piezas.forEach(function(pz){
           h.push('<div class="imp-pz">');
@@ -2730,7 +3149,7 @@ var Ens=(function(){
         '<p>Toca un ducto y luego una pieza.</p>';
       $$('#enDibujo svg,#enDibujo .zoomc').forEach(function(n){n.remove();});
     }
-    pintarArbol(); contar();
+    pintarArbol(); contar(); pintarFicha();
     if(sel){ pintarPanel(); dibujar(); }
   }
   function perteneceA(s,proy){
@@ -2766,6 +3185,16 @@ var Ens=(function(){
       }catch(e){}
     });
     LIB.sort(function(a,b){ return a.folio.localeCompare(b.folio); });
+    // planos en PDF cargados a mano en sesiones anteriores
+    for(var i=0;i<LIB.length;i++){
+      var rb=await Almacen.leerBlob('plano:'+LIB[i].folio);
+      if(rb&&rb.blob){
+        LIB[i].planoBlob=rb.blob;
+        LIB[i].planoArchivo=rb.nombre||(LIB[i].folio+'.pdf');
+        LIB[i].planoBytes=rb.bytes||rb.blob.size;
+        LIB[i].planoURL=URL.createObjectURL(rb.blob);
+      }
+    }
   }
 
   // Publicado en GitHub Pages: la biblioteca viene del manifiesto del sitio.
@@ -2774,7 +3203,7 @@ var Ens=(function(){
     if(n>0){
       $('#pieLib').textContent=n+' proyecto(s) publicados';
       $('#heroTxt').innerHTML='Estos son los proyectos publicados. Toca <b>CORTE</b> o '+
-        '<b>ENSAMBLE</b> en el que vayas a trabajar.';
+        '<b>ENSAMBLE</b> en el que vayas a trabajar; el <b>PLANO</b> se abre desde arriba.';
       $('#soltar').style.display='none';     // en la tableta no se cargan archivos a mano
     }
     else if(n<0){
@@ -2809,7 +3238,7 @@ var Ens=(function(){
 
   // restaurar ruta del hash
   var h=(location.hash||'').replace(/^#\//,'').split('/');
-  if(h[0]&&h[1]&&(h[0]==='corte'||h[0]==='ensamble')){
+  if(h[0]&&h[1]&&(h[0]==='corte'||h[0]==='ensamble'||h[0]==='plano')){
     var r=libPorFolio(decodeURIComponent(h[1]));
     if(r) abrirProyecto(r,h[0]);            // descarga primero si hace falta
     else toast('El folio '+decodeURIComponent(h[1])+' no está publicado',true);
