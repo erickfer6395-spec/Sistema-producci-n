@@ -1,11 +1,12 @@
 {
  "v": 1,
- "actualizado": "2026-09-23T20:27:56Z",
+ "actualizado": "2026-09-24T14:04:54Z",
  "proyectos": [
   {"folio":"DTI-251443","cliente":"Vernel Industrias","archivo":"datos/DTI-251443.json","bytes":46650,"sha":"0e36a9a0e2b46c0f","jerarquico":true,"conteos":{"sistemas":6,"ductos":31,"piezas":45,"lienzos":189,"accesorios":33,"unidadesAcc":123,"corte":222}},
   {"folio":"DTI-260258","cliente":"Cyme","archivo":"datos/DTI-260258.json","bytes":10413,"sha":"72cb48f6206231da","jerarquico":true,"conteos":{"sistemas":1,"ductos":2,"piezas":10,"lienzos":45,"accesorios":3,"unidadesAcc":3,"corte":48}},
   {"folio":"DTI-260513","cliente":"Proyectos y Sistemas Avifa","archivo":"datos/DTI-260513.json","bytes":9920,"sha":"c65d826f1d742b13","jerarquico":true,"conteos":{"sistemas":4,"ductos":4,"piezas":8,"lienzos":48,"accesorios":0,"unidadesAcc":0,"corte":48}},
   {"folio":"DTI-260701","cliente":"DTI Andina SAS","archivo":"datos/DTI-260701.json","bytes":5412,"sha":"401ef29d994f87ea","jerarquico":true,"conteos":{"sistemas":2,"ductos":8,"piezas":8,"lienzos":16,"accesorios":8,"unidadesAcc":15,"corte":24}},
+  {"folio":"DTI-260707","cliente":"Dahll Comercio Internaciona LTDA","archivo":"datos/DTI-260707.json","bytes":13192,"sha":"dde68ac1cd30e5b1","jerarquico":true,"conteos":{"sistemas":2,"ductos":6,"piezas":12,"lienzos":56,"accesorios":10,"unidadesAcc":10,"corte":66}},
   {"folio":"DTI-260831","cliente":"Operadora de Turismo en SMA","archivo":"datos/DTI-260831.json","bytes":3237,"sha":"bfcee2cb5544d3cb","jerarquico":true,"conteos":{"sistemas":1,"ductos":2,"piezas":4,"lienzos":12,"accesorios":3,"unidadesAcc":8,"corte":15}},
   {"folio":"DTI-261009","cliente":"VICTOR ALFONSO REYES FERNANDEZ","archivo":"datos/DTI-261009.json","bytes":15058,"sha":"4dc0271c51eb5433","jerarquico":true,"conteos":{"sistemas":3,"ductos":6,"piezas":18,"lienzos":63,"accesorios":9,"unidadesAcc":9,"corte":72}},
   {"folio":"DTI-261014","cliente":"Soluciones Comerciales","archivo":"datos/DTI-261014.json","bytes":3096,"sha":"309fdc110705b743","jerarquico":true,"conteos":{"sistemas":2,"ductos":2,"piezas":4,"lienzos":12,"accesorios":2,"unidadesAcc":2,"corte":14}},
