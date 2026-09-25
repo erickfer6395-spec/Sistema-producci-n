@@ -67,7 +67,11 @@ input,select{font-family:inherit; font-size:inherit}
 .mod.m-ens.on{background:var(--ens); border-color:var(--ens); color:#fff}
 .mod.m-plano.on{background:var(--plano); border-color:var(--plano); color:#fff}
 
-.proy-activo{margin-left:auto; display:flex; align-items:center; gap:12px; min-width:0}
+/* Todo lo de la derecha de la barra va junto: los porcentajes y, en Ensamble,
+   los dos botones que antes vivían en una franja propia. */
+.barra-der{margin-left:auto; display:flex; align-items:center; gap:10px; min-width:0}
+.proy-activo{display:flex; align-items:center; gap:12px; min-width:0}
+.acc-ens{display:flex; align-items:center; gap:8px}
 .mini-prog{display:flex; gap:8px}
 .mp{display:flex; align-items:center; gap:6px; background:var(--bg); padding:5px 10px; border-radius:20px; font-size:.78rem; font-weight:700}
 .mp i{width:8px;height:8px;border-radius:50%;font-style:normal}
@@ -229,16 +233,10 @@ select.filtro{
 /* ============ VISTA ENSAMBLE — pantalla de taller ============
    Letra y objetivos táctiles grandes, alto contraste, sin adornos.
    Todo lo que no sea el ducto, los lienzos y la medida del soporte está fuera. */
-.ens-cab{
-  flex:0 0 auto; background:var(--card); border-bottom:2px solid var(--borde);
-  padding:12px 20px; display:flex; align-items:center; gap:14px;
-}
-.ens-cab h2{margin:0; font-size:1.5rem; font-weight:800; letter-spacing:-.4px}
 .btn-ops{
-  width:48px; height:48px; border-radius:11px; border:2px solid var(--borde2);
-  background:var(--card); color:var(--tinta2); font-size:1.3rem;
+  width:46px; height:46px; border-radius:11px; border:2px solid var(--borde2);
+  background:var(--card); color:var(--tinta2); font-size:1.25rem;
 }
-.btn-ops:first-of-type{margin-left:auto}
 .btn-ops:hover{background:var(--bg); color:var(--tinta); border-color:var(--tinta3)}
 
 /* --- lista completa del proyecto (se abre con 📋) --- */
@@ -358,7 +356,7 @@ select.filtro{
     linear-gradient(90deg,rgba(148,163,184,.10) 1px,transparent 1px) 0 0/26px 26px,
     linear-gradient(rgba(148,163,184,.10) 1px,transparent 1px) 0 0/26px 26px, #fbfcfe;
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-  gap:12px; padding:20px;
+  gap:8px; padding:10px;
 }
 /* flex:0 0 auto es obligatorio: sin él, el contenedor en columna ENCOGE el svg
    hasta el alto disponible y el botón de acercar no agranda nada. */
@@ -384,31 +382,35 @@ select.filtro{
    Lo unico que se anade al dibujo: el perimetro, y los accesorios que van en
    ESTE ducto cuando el .json lo dice. Barra ancha y de letra grande porque se
    lee de pie y de lejos. */
+/* Pegada arriba: al desplazar el dibujo, el perímetro NO se va de la vista.
+   Y lo más plana posible: en una tableta cada renglón de más se lo quita al
+   dibujo, que es lo que el operador está mirando. */
 .ficha-duc{
   order:1; flex:0 0 auto; width:100%; max-width:980px;
-  background:var(--card); border:2px solid var(--borde); border-radius:14px;
-  padding:10px 12px; display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:6;
+  background:var(--card); border:2px solid var(--borde); border-radius:12px;
+  padding:6px 10px; display:flex; align-items:center; gap:6px 14px; flex-wrap:wrap;
   box-shadow:var(--sombra);
 }
 /* Dentro de la ficha los botones de zoom dejan de flotar. */
 .zoomc.en-ficha{order:2; position:static; background:none; border:0; box-shadow:none;
   padding:0; margin-left:auto; gap:6px}
-.zoomc.en-ficha .zb{width:44px; height:44px; font-size:1.35rem}
+.zoomc.en-ficha .zb{width:38px; height:38px; font-size:1.15rem}
 /* Orden fijo: arriba el perímetro y el zoom, abajo los accesorios. Sin esto,
    en una columna estrecha la barra se partía en tres renglones y se comía
    el sitio del dibujo. */
 .fd-per{order:1; display:flex; align-items:baseline; gap:10px; flex:0 0 auto}
-.fd-per i{font-style:normal; font-size:.76rem; font-weight:800; letter-spacing:1.2px;
-  text-transform:uppercase; color:var(--tinta3)}
-.fd-per b{font-size:1.5rem; font-weight:900; letter-spacing:-.5px; color:var(--tinta)}
-.fd-acc{order:3; width:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-.fd-acc > i{font-style:normal; font-size:.76rem; font-weight:800; letter-spacing:1.2px;
-  text-transform:uppercase; color:var(--tinta3)}
+.fd-per i{font-style:normal; font-size:.74rem; font-weight:800; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--tinta3); white-space:nowrap}
+.fd-per b{font-size:1.2rem; font-weight:900; letter-spacing:-.4px; color:var(--tinta)}
+.fd-acc{order:3; width:100%; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.fd-acc > i{font-style:normal; font-size:.74rem; font-weight:800; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--tinta3); white-space:nowrap}
 .acc-chip{
-  display:inline-flex; align-items:center; gap:7px; border-radius:11px; padding:7px 13px;
-  font-weight:800; font-size:1.02rem; line-height:1.15; border:2px solid; white-space:nowrap;
+  display:inline-flex; align-items:center; gap:4px; border-radius:9px; padding:3px 8px;
+  font-weight:800; font-size:.92rem; line-height:1.2; border:2px solid; white-space:nowrap;
 }
-.acc-chip u{text-decoration:none; font-weight:900; font-size:1.1rem}
+.acc-chip u{text-decoration:none; font-weight:900; font-size:1rem}
 .acc-tapa {background:#eff6ff; border-color:#93c5fd; color:#1e40af}
 .acc-fondo{background:#f1f5f9; border-color:#cbd5e1; color:#334155}
 .acc-red  {background:#fff7ed; border-color:#fdba74; color:#9a3412}
@@ -511,7 +513,8 @@ select.filtro{
    quitan los porcentajes, que también están en la biblioteca. */
 @media (max-width:1040px){
   .mod{padding:0 14px; font-size:.95rem; gap:7px}
-  .sel-proy{max-width:190px}
+  .sel-proy{max-width:160px}
+  .btn-ops{width:40px; height:40px; font-size:1.1rem}
 }
 @media (max-width:900px){
   /* !important porque setActual pone display en el propio elemento y un
@@ -527,6 +530,14 @@ select.filtro{
   .lz .cu b{font-size:.97rem}
   .lienzo-panel .check{width:38px;height:38px}
   .lp-pie .btn{font-size:1.1rem; padding:17px}
+}
+/* En una tableta apaisada el dibujo lo limita el ANCHO, no el alto: las dos
+   columnas de los lados se llevan más de la mitad. Se estrechan por tramos
+   para devolverle sitio al ducto sin dejar de leerse. */
+@media (max-width:1150px){
+  .arbol{width:236px} .lienzo-panel{width:296px}
+  .lz .cu b{font-size:.92rem}
+  .lienzo-panel .check{width:34px;height:34px;border-width:2px;font-size:19px}
 }
 @media (max-width:860px){
   .ens-cols{flex-direction:column; overflow:auto}
@@ -553,10 +564,16 @@ select.filtro{
     <button class="mod m-plano" id="tabPlano" data-ir="plano" disabled><span>📐</span>PLANO</button>
   </nav>
 
-  <div class="proy-activo" id="proyActivo" style="display:none">
-    <div class="mini-prog">
-      <span class="mp c"><i></i><span id="paCorte">0%</span></span>
-      <span class="mp e"><i></i><span id="paEns">0%</span></span>
+  <div class="barra-der">
+    <div class="proy-activo" id="proyActivo" style="display:none">
+      <div class="mini-prog">
+        <span class="mp c"><i></i><span id="paCorte">0%</span></span>
+        <span class="mp e"><i></i><span id="paEns">0%</span></span>
+      </div>
+    </div>
+    <div class="acc-ens" id="accEns" style="display:none">
+      <button class="btn-ops" id="enLista" title="Ver la lista completa de lienzos">📋</button>
+      <button class="btn-ops" id="enOpciones" title="Opciones">⚙</button>
     </div>
   </div>
 </header>
@@ -635,12 +652,6 @@ select.filtro{
 
   <!-- ================= ENSAMBLE ================= -->
   <section class="vista" id="vEns">
-    <div class="ens-cab">
-      <h2 id="enTit">Ensamble</h2>
-      <button class="btn-ops" id="enLista" title="Ver la lista completa de lienzos">📋</button>
-      <button class="btn-ops" id="enOpciones" title="Opciones">⚙</button>
-    </div>
-
     <!-- Lista completa del proyecto: ocasional, se abre con 📋 y no es lo primero que se ve -->
     <div class="ens-todo" id="enTodo" style="display:none">
       <div class="et-cab">
@@ -1826,6 +1837,7 @@ function ir(v,opts){
     var nuevo='#/'+v+(actual&&v!=='carga'?('/'+encodeURIComponent(actual.folio)):'');
     if(location.hash!==nuevo){ ignorarHash=true; location.hash=nuevo; }
   }catch(e){}
+  $('#accEns').style.display=(v==='ensamble'&&actual)?'flex':'none';
   if(v==='carga') pintarBiblioteca();
   if(v==='corte') Corte.abrir(actual);
   if(v==='ensamble') Ens.abrir(actual,opts);
@@ -2552,9 +2564,11 @@ var Ens=(function(){
     if(D.accesorios&&D.accesorios.length){
       h.push('<span class="fd-acc"><i>Lleva</i>'+chipsAcc(D.accesorios)+'</span>');
     }else if(S&&!P.hayUbicacionAcc&&S.accesorios.length){
-      h.push('<span class="fd-acc"><i>En este sistema</i>'+chipsAcc(S.accesorios)+'</span>');
-      h.push('<span class="fd-nota">Este archivo no dice en qué ducto va cada accesorio: '+
-             'los de arriba son los de todo el sistema '+esc(S.id)+'.</span>');
+      // El rótulo ya dice que son de TODO el sistema, así que sobra el renglón
+      // de aviso: el detalle queda en el globo de ayuda y no roba alto.
+      h.push('<span class="fd-acc" title="Este archivo no dice en qué ducto va cada '+
+             'accesorio. Vuelve a generar el proyecto en el CAM para verlo por ducto.">'+
+             '<i>Sistema '+esc(S.id)+'</i>'+chipsAcc(S.accesorios)+'</span>');
     }
     c.innerHTML=h.join('');
     c.style.display='flex';
@@ -2876,9 +2890,16 @@ var Ens=(function(){
     t.setAttribute('font-size',v.toFixed(2));
     t.setAttribute('stroke-width',(v*0.3).toFixed(2));
   }
+  /* El ducto se ajusta al hueco QUE QUEDA, no a la columna entera: la ficha
+     está dentro de la misma columna y, si no se descuenta, el dibujo sale más
+     alto que el sitio disponible y la ficha se va de la vista al desplazar. */
   function encuadrar(cont){
-    var w=(cont.clientWidth||700)-40, h=(cont.clientHeight||600)-40;
-    return Math.max(0.25,Math.min(2.5, Math.min(w/vbW, h/vbH)));
+    var ficha=$('#enFicha'), alto=0;
+    if(ficha && ficha.style.display!=='none')
+      alto=ficha.getBoundingClientRect().height+8;   // 8 = el hueco entre los dos
+    var w=(cont.clientWidth||700)-24;
+    var h=(cont.clientHeight||600)-24-alto;
+    return Math.max(0.25,Math.min(2.5, Math.min(w/vbW, Math.max(60,h)/vbH)));
   }
   function cambiarZoom(d){
     zoom=Math.max(0.25,Math.min(5,zoom+d)); zoomManual=true; aplicarZoom();
@@ -3140,7 +3161,6 @@ var Ens=(function(){
     if(!P||P.folio!==proy.folio){ abiertos={}; $('#etBus').value=''; }
     P=proy; est=Prog.cargar('ensamble',P.folio);
     verLista(false);                       // el dibujo es siempre lo primero
-    $('#enTit').textContent=P.folio;
     if(!sel || !perteneceA(sel,P)){
       sel=null;
       $('#enPanel').style.display='none';
