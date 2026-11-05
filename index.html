@@ -213,6 +213,8 @@ select.filtro{
 .et.mat{background:#fef3c7; color:#92400e}
 .et.dif{background:#fce7f3; color:#be185d}
 .et.vena{background:#e0f2fe; color:#0369a1}
+/* Membrana del elíptico: mismo color con el que sale en el corte transversal. */
+.et.memb{background:#fce7f3; color:#9d174d}
 .et.ruta{background:transparent; color:var(--tinta3); padding-left:0}
 .muestra{width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.2); display:inline-block}
 .check{
@@ -1016,7 +1018,7 @@ function normalizar(json,archivo){
     folio:(json&&json.numero_proyecto)||(json&&json.metadata&&json.metadata.folio)||
           ((archivo||'').replace(/\.json$/i,'')||'SIN-FOLIO'),
     cliente:(json&&json.cliente)||(json&&json.metadata&&json.metadata.cliente)||'—',
-    sistemas:[], corte:[], ensamble:[], accesorios:[],
+    sistemas:[], corte:[], ensamble:[], accesorios:[], membranas:[],
     jerarquico:formato==='jerarquico', avisos:[], formas:{}, hayUbicacionAcc:false
   };
 
@@ -1030,7 +1032,8 @@ function normalizar(json,archivo){
           forma:duc.forma||'circular',
           perimetro_cm:(typeof duc.perimetro_cm==='number')?duc.perimetro_cm:null,
           soportes:Array.isArray(duc.soportes)?duc.soportes:[],
-          piezas:[], total:0, accesorios:[]
+          piezas:[], total:0, accesorios:[],
+          medida:null, medidaOrigen:null, lob:null, membrana:null
         };
         D.grupoSop = D.soportes.length?D.soportes[0]:null;
         D.horas = (D.grupoSop&&Array.isArray(D.grupoSop.horas))
@@ -1046,7 +1049,7 @@ function normalizar(json,archivo){
             indice:(pz.indice!=null?pz.indice:pi+1),
             letra:(pz.letra!=null?String(pz.letra):String(pi+1)),
             largo_cm:(pz.largo_cm!=null?pz.largo_cm:null),
-            lienzos:[], ducto:D
+            lienzos:[], membranas:[], ducto:D
           };
           PZ.nombre='Ducto '+D.numero+' · Pieza '+PZ.letra;
           (pz.lienzos||[]).forEach(function(l,li){
@@ -1081,6 +1084,61 @@ function normalizar(json,archivo){
           D.total+=PZ.lienzos.length;
           D.piezas.push(PZ);
         });
+
+        /* ---- ELÍPTICO: forma real y membranas ----
+           El elíptico del CAM es un contorno lobulado con una membrana en
+           cada cintura (sección 3.1). Para dibujarlo y para dar la medida de
+           corte de la membrana hace falta D1 × D2: se toma del archivo si
+           viene, y si no se deduce de los lienzos y sólo se acepta cuando
+           cuadra con la fórmula del CAM. Si no cuadra, el ducto se queda
+           como antes y no se listan membranas: no se inventa una medida. */
+        if(clasificarForma(D.forma)==='eliptica'){
+          D.medida=medidaDelJson(duc);
+          D.medidaOrigen=D.medida?'archivo':null;
+          if(!D.medida){
+            D.medida=deducirMedidaEliptica(D.perimetro_cm,D.piezas.map(function(pz){
+              return pz.lienzos.map(function(l){ return l.neto_cm; }); }));
+            if(D.medida) D.medidaOrigen='lienzos';
+          }
+          if(D.medida){
+            D.lob=geomLobulada(D.medida.D1,D.medida.D2);
+            D.membrana=membranaCAM(D.medida.D1,D.medida.D2);
+            if(!D.lob){ D.medida=null; D.medidaOrigen=null; D.membrana=null; }
+          }
+          if(!D.medida)
+            P.avisos.push('Ducto '+D.numero+': elíptico sin medida en el archivo y los '+
+                          'lienzos no la determinan. El corte transversal sale esquemático '+
+                          'y sus membranas no entran a la lista.');
+        }
+        if(D.membrana){
+          D.piezas.forEach(function(PZ,pi){
+            var ref=PZ.lienzos[0]||{};
+            for(var mm=1;mm<=D.membrana.n;mm++){
+              /* El id es el que el CAM imprime en la tela: FEtiqueta.GenerarEtiqueta
+                 con Tipo "M" arma «<ducto> - <letra> M<n> <largo> X <alto>», el
+                 mismo formato de los lienzos («6 H - F L1 15.8 X 28.08»). El LARGO
+                 se deja fuera a propósito: en el CAM es LongitudSinCost − 5 cm y el
+                 .json sólo trae el largo CON costuras (piece.getLength()), así que
+                 no se puede escribir sin inventarlo. Con «6 H - F M1» el operario ya
+                 casa el renglón con la etiqueta de la pieza cortada. */
+              var M={
+                sistemaIdx:si, ductoIdx:di, piezaIdx:pi, idx:mm-1,
+                id:D.numero+' - '+PZ.letra+' M'+mm,
+                etiqueta:'M'+mm,
+                tipo:'Membrana', esMembrana:true,
+                ancho_cm:D.membrana.ancho_cm, neto_cm:D.membrana.neto_cm, largo_cm:0,
+                material:ref.material||null, color:ref.color||null,
+                difusion:false, num_difusiones:0, horasDif:[],
+                ductoNum:D.numero, piezaLetra:PZ.letra, sistemaId:S.id, forma:D.forma,
+                ruta:'Ducto '+D.numero+' · Pieza '+PZ.letra, pieza:PZ
+              };
+              // Misma regla que los lienzos: la clave es la POSICIÓN, no la
+              // medida, para que un re-export con otra medida no borre el avance.
+              M.clave=hash53('M|'+P.folio+'|S'+S.id+'|D'+D.numero+'|p'+(pi+1)+'|M'+mm);
+              PZ.membranas.push(M); P.corte.push(M); P.membranas.push(M);
+            }
+          });
+        }
         S.ductos.push(D);
       });
       var nPorTipo={};
@@ -1163,6 +1221,7 @@ function normalizar(json,archivo){
     lienzos:P.ensamble.length,
     accesorios:P.accesorios.length,
     unidadesAcc:P.accesorios.reduce(function(a,x){return a+x.cantidad;},0),
+    membranas:P.membranas.length,
     corte:P.corte.length
   };
   P.sinSoportes=P.sistemas.reduce(function(a,s){
@@ -1194,17 +1253,223 @@ function clasificarForma(forma){
 }
 var NOMBRE_FORMA={circular:'Circular','semicircular':'Semicircular','media-elipse':'Media elipse','eliptica':'Elíptica'};
 
+/* ------------------------------------------------------------------
+   3.1 EL «ELÍPTICO» NO ES UNA ELIPSE
+   El CAM no cose una elipse: cose un contorno LOBULADO. Son n+1 círculos
+   del diámetro MENOR puestos en fila y recortados entre sí, y en cada
+   cintura va una MEMBRANA vertical que es la que sujeta la forma. Eso es
+   lo que se ve en el taller: panzas y cortes, no una elipse.
+
+   Portado tal cual del CAM (FPerimetro.CalcularPerimetro y
+   FLienzoEliptico.calcularMembranas), con D1 = horizontal y D2 = vertical:
+       r = D2/2                      radio del lóbulo
+       l = D1 − D2                   lo que sobra del eje mayor
+       n = round(l/D2 + 1)           MEMBRANAS   (hay n+1 lóbulos)
+       y = l/n                       separación entre centros de lóbulo
+       h = √(r² − (l/2n)²)           media altura de la membrana
+       P = 2·r·n·(π − 2·asin(h/r)) + 2·π·r
+   El CAM es Python y ahí round() lleva la mitad al PAR: con l/D2 = 1.5 el
+   round de JavaScript daría 3 membranas y el del CAM 2. De ahí redondeoPar.
+   ------------------------------------------------------------------ */
+function redondeoPar(x){
+  var f=Math.floor(x);
+  if(Math.abs(x-f-0.5)>1e-9) return Math.round(x);
+  return (f%2===0)?f:f+1;
+}
+function red2(x){ return Math.round(x*100)/100; }
+
+function geomLobulada(D1,D2){
+  if(!(D1>0)||!(D2>0)||D1<D2) return null;
+  var l=D1-D2;
+  if(l<1e-6) return null;                       // D1 = D2 es un círculo, no un elíptico
+  var r=D2/2;
+  var n=redondeoPar(l/D2+1);
+  if(n<1) n=1;
+  var h=Math.sqrt(Math.max(r*r-(l*l)/(4*n*n),0));
+  var alfa=Math.asin(Math.min(1,Math.max(-1,h/r)));
+  return {D1:D1, D2:D2, r:r, l:l, n:n, y:l/n, h:h, alfa:alfa,
+          perimetro:2*r*n*(Math.PI-2*alfa)+2*Math.PI*r};
+}
+
+/* Medida de CORTE de la membrana, por el mismo camino que la dibuja el CAM
+   (Funciones.py: calcularMembranas y después h2 += 2·costura). Ahí `l` se
+   redondea a centímetros ENTEROS antes de sacar la altura, así que no da
+   exactamente lo mismo que la geometría del perímetro: se respeta el camino
+   del CAM, que es el que acaba en la tela. El largo NO se calcula aquí: en
+   el CAM sale de LongitudSinCost − 5 cm y eso no viene en el .json. */
+function membranaCAM(D1,D2){
+  if(!(D1>0)||!(D2>0)||D1<=D2) return null;
+  var r2=red2(D2/2), l=redondeoPar(D1-D2);
+  if(l<=0) return null;
+  var n=redondeoPar(l/D2+1);
+  if(n<1) return null;
+  var alto=red2(2*Math.sqrt(Math.max(r2*r2-(l*l)/(4*n*n),0)));
+  if(!(alto>0)) return null;
+  return {n:n, neto_cm:alto, ancho_cm:red2(alto+2*COSTURA_CM)};
+}
+
+/* ------------------------------------------------------------------
+   3.2 DE DÓNDE SALE LA MEDIDA D1 × D2
+   El .json de hoy sólo trae `forma` y `perimetro_cm`, y el perímetro SOLO no
+   determina la medida: hay una familia entera de (D1, D2) que da el mismo
+   número. Pero los lienzos sí la determinan: el CAM corta el contorno EN LAS
+   CINTURAS, así que todos los quiebres del contorno lobulado tienen que caer
+   sobre un quiebre de lienzo.
+
+   Esto no es adivinar por las medidas. Una candidata sólo se acepta si:
+     a) reproduce el mismo número de membranas que calcula el CAM,
+     b) reproduce el perímetro del archivo,
+     c) TODOS sus quiebres caen sobre un quiebre de lienzo,
+     d) queda UNA sola al pedir medida redonda (pulgada entera, o cm entero),
+     e) las piezas del ducto que se resuelven dicen lo mismo.
+   Si algo no cuadra devuelve null, el dibujo se queda esquemático y las
+   membranas no entran a la lista. No se inventa una medida.
+
+   Comprobado contra los 44 ductos elípticos ya subidos: 43 salen con la
+   medida exacta de diseño (48×28, 63×26 y 86×20 pulgadas, las mismas que
+   traen los id de los codos elípticos de esos proyectos). El que falta no
+   trae lienzos ni perímetro.
+   ------------------------------------------------------------------ */
+var PULGADA_CM=2.54;
+
+function _candidatasEliptica(perimetroCm,netos){
+  var B=[0], i, j;
+  for(i=0;i<netos.length;i++) B.push(B[i]+netos[i]);
+  var total=B.pop();                                  // el último quiebre es el cierre
+  if(!(total>0)||B.length<2) return [];
+  // La geometría pura de los lóbulos y la suma de los lienzos difieren hasta
+  // un 0.25 % (lo dice el propio CAM en FTransiciones.contornoLobulado).
+  var tolP=Math.max(0.30,total*0.004), tolQ=0.12, out=[];
+  for(var n=2;n<=10;n++){
+    for(i=0;i<B.length;i++) for(j=0;j<B.length;j++){
+      if(i===j) continue;
+      var beta=(B[j]-B[i]+total)%total;                // arco del lóbulo de punta
+      if(!(beta>0)) continue;
+      var s=(total-2*beta)/(2*(n-1));                  // medio lóbulo intermedio
+      if(!(s>0)) continue;
+      var den=2*(s-beta);
+      if(Math.abs(den)<1e-9) continue;
+      var alfa=Math.PI*(2*s-beta)/den;                 // de beta/s = 2(π−α)/(π−2α)
+      if(!(alfa>1e-4&&alfa<Math.PI/2-1e-4)) continue;
+      var r=beta/(2*(Math.PI-alfa));
+      if(!(r>0)) continue;
+      var D2=2*r, D1=n*(2*r*Math.cos(alfa))+D2;
+      var g=geomLobulada(D1,D2);
+      if(!g||g.n!==n) continue;
+      if(Math.abs(g.perimetro-total)>tolP) continue;
+      if(perimetroCm>0&&Math.abs(g.perimetro-perimetroCm)>tolP) continue;
+      var acc=B[i], ok=true;
+      for(var k=0;k<2*n;k++){
+        var pt=((acc%total)+total)%total, d=Infinity;
+        for(var q=0;q<B.length;q++){
+          var dd=Math.abs(pt-B[q]); dd=Math.min(dd,total-dd);
+          if(dd<d) d=dd;
+        }
+        if(d>tolQ){ ok=false; break; }
+        acc+=(k===0||k===n)?beta:s;
+      }
+      if(ok) out.push({D1:D1,D2:D2,n:n});
+    }
+  }
+  return out;
+}
+function _medidaRedonda(v,paso,tol){
+  var k=Math.round(v/paso);
+  return k>0&&Math.abs(v-k*paso)<=tol;
+}
+// La candidata sale con un par de décimas de error. Si al cuadrarla a la
+// medida redonda sigue dando las mismas membranas y el mismo perímetro, se
+// queda la redonda: es la que tecleó el proyectista (63" x 26", no 63.01").
+function _cuadrar(c,paso,total){
+  var D1=Math.round(c.D1/paso)*paso, D2=Math.round(c.D2/paso)*paso;
+  var g=geomLobulada(D1,D2);
+  if(g&&g.n===c.n&&Math.abs(g.perimetro-total)<=Math.max(0.30,total*0.004))
+    return {D1:red2(D1), D2:red2(D2), exacta:true};
+  return {D1:red2(c.D1), D2:red2(c.D2), exacta:false};
+}
+function _unicaEliptica(cands,total){
+  var u=[];
+  cands.forEach(function(c){
+    for(var i=0;i<u.length;i++)
+      if(Math.abs(u[i].D1-c.D1)<0.3&&Math.abs(u[i].D2-c.D2)<0.2) return;
+    u.push(c);
+  });
+  var pulg=u.filter(function(c){
+    return _medidaRedonda(c.D2,PULGADA_CM,0.30)&&_medidaRedonda(c.D1,PULGADA_CM,0.50); });
+  if(pulg.length===1) return _cuadrar(pulg[0],PULGADA_CM,total);
+  if(pulg.length>1) return null;                       // empate: no se afirma nada
+  var cm=u.filter(function(c){
+    return _medidaRedonda(c.D2,1,0.10)&&_medidaRedonda(c.D1,1,0.30); });
+  return cm.length===1?_cuadrar(cm[0],1,total):null;
+}
+function deducirMedidaEliptica(perimetroCm,piezasNetos){
+  var acuerdo=null;
+  for(var p=0;p<piezasNetos.length;p++){
+    var netos=piezasNetos[p];
+    if(!netos||netos.length<2) continue;
+    var total=netos.reduce(function(a,b){return a+b;},0);
+    var uno=_unicaEliptica(_candidatasEliptica(perimetroCm,netos),total);
+    if(!uno) continue;                                 // esa pieza no desempata
+    if(!acuerdo) acuerdo=uno;
+    else if(Math.abs(acuerdo.D1-uno.D1)>0.5||Math.abs(acuerdo.D2-uno.D2)>0.3)
+      return null;                                     // dos piezas dicen cosas distintas
+  }
+  return acuerdo;
+}
+/* La medida escrita en el archivo manda sobre la deducida. Todavía no hay
+   .json que la traiga; el día que el CAM la escriba, el sistema la usa sin
+   tocar nada más. */
+function medidaDelJson(duc){
+  var m=duc&&(duc.medida||duc.seccion);
+  if(!m||typeof m!=='object') return null;
+  var h=Number(m.horizontal_cm!=null?m.horizontal_cm:m.h);
+  var v=Number(m.vertical_cm!=null?m.vertical_cm:m.v);
+  if(!(h>0)||!(v>0)) return null;
+  return {D1:h, D2:v, exacta:true};
+}
+
 function buildOutline(forma,perimetroCm,opts){
   opts=opts||{};
   var N=opts.N||1440, k=opts.aspecto||2;
   var tipo=clasificarForma(forma);
   var P=(perimetroCm>0)?perimetroCm:100;
-  var raw=[], esquematico=false, partida=false, nArco=0, dims={};
+  var raw=[], rawMemb=[], esquematico=false, partida=false, nArco=0, dims={};
+  var horaCero=12;        // qué hora cae en el parámetro t = 0
 
-  if(tipo==='circular'||tipo==='eliptica'){
+  if(tipo==='eliptica'&&opts.lob){
+    /* FORMA REAL: n+1 lóbulos de radio D2/2 recortados entre sí, con una
+       membrana en cada cintura. Se recorre desde la HORA 9 (la punta
+       izquierda) y por ARRIBA, que es como desdobla el CAM
+       (Section.unfoldArcFromHour9): así las horas 9 y 3 caen justo en las
+       dos puntas, igual que las costuras de los soportes 9;3. */
+    var G=opts.lob, rr=G.r, nn=G.n, yy=G.y, al=G.alfa;
+    var cen=[], ci;
+    for(ci=0;ci<=nn;ci++) cen.push((ci-nn/2)*yy);
+    var tramos=[[cen[0],Math.PI,al]];                       // lóbulo de punta izquierdo, mitad de arriba
+    for(ci=1;ci<nn;ci++) tramos.push([cen[ci],Math.PI-al,al]);
+    tramos.push([cen[nn],Math.PI-al,-(Math.PI-al)]);        // lóbulo de punta derecho, entero
+    for(ci=nn-1;ci>=1;ci--) tramos.push([cen[ci],-al,-(Math.PI-al)]);
+    tramos.push([cen[0],-al,-Math.PI]);                     // y de vuelta a la hora 9
+    var arcoTot=tramos.reduce(function(s,t){ return s+Math.abs(t[1]-t[2]); },0);
+    tramos.forEach(function(t){
+      var pasos=Math.max(6,Math.round(N*Math.abs(t[1]-t[2])/arcoTot));
+      for(var q=0;q<pasos;q++){
+        var th=t[1]+(t[2]-t[1])*(q/pasos);
+        raw.push([t[0]+rr*Math.cos(th), -rr*Math.sin(th)]);
+      }
+    });
+    for(var mk=1;mk<=nn;mk++){
+      var xm=cen[mk]-yy/2;
+      rawMemb.push([xm,-G.h,xm,G.h]);
+    }
+    dims={a:G.D1/2, b:G.D2/2, r:rr, D1:G.D1, D2:G.D2, n:nn};
+    horaCero=9;
+  }else if(tipo==='circular'||tipo==='eliptica'){
     var a,b;
     if(tipo==='circular'){ a=b=P/(2*Math.PI); }
     else{
+      // Sin medida no se puede saber cuántos lóbulos lleva: se deja la elipse
+      // de siempre, a rayas, para que se vea que es un esquema.
       esquematico=true;
       var lo=1e-9,hi=P;
       for(var i0=0;i0<100;i0++){ var am=(lo+hi)/2; if(perimElipse(am,am/k)<P) lo=am; else hi=am; }
@@ -1245,6 +1510,11 @@ function buildOutline(forma,perimetroCm,opts){
   var escala=(2*RBOX)/Math.max(maxx-minx,maxy-miny);
   var ox=(minx+maxx)/2, oy=(miny+maxy)/2;
   var pts=raw.map(function(p){ return [CX+(p[0]-ox)*escala, CY+(p[1]-oy)*escala]; });
+  // Las membranas van por la misma escala y el mismo traslado que el contorno.
+  var membranas=rawMemb.map(function(m){
+    return {x1:CX+(m[0]-ox)*escala, y1:CY+(m[1]-oy)*escala,
+            x2:CX+(m[2]-ox)*escala, y2:CY+(m[3]-oy)*escala};
+  });
 
   var cum=[0];
   for(var s=1;s<=pts.length;s++){
@@ -1278,7 +1548,8 @@ function buildOutline(forma,perimetroCm,opts){
   }
   function fractionAtHour(h){
     h=((h%12)+12)%12;
-    if(!partida) return h/12;
+    // El contorno lobulado arranca en la hora 9, no en la 12.
+    if(!partida) return (((h-horaCero)/12)%1+1)%1;
     if(h>=3&&h<=9) return (((h-3)/6)*arcoPx)/total;
     var u=(h>9)?(h-9)/6:(h+3)/6;
     return (arcoPx+u*planoPx)/total;
@@ -1301,6 +1572,7 @@ function buildOutline(forma,perimetroCm,opts){
   }
   var d='M '+pts.map(function(p){return p[0].toFixed(2)+' '+p[1].toFixed(2);}).join(' L ')+' Z';
   return {tipo:tipo, pts:pts, cum:cum, total:total, d:d, escala:escala, dims:dims,
+          membranas:membranas, lobulada:!!(tipo==='eliptica'&&opts.lob),
           esquematico:esquematico, partida:partida, arcoPx:arcoPx, planoPx:planoPx,
           pointAtFraction:pointAtFraction, fractionAtHour:fractionAtHour, pointAtHour:pointAtHour,
           centro:centro, perimetroCm:P};
@@ -2120,6 +2392,7 @@ function pintarBiblioteca(){
       if(c.ductos!=null) chips.push('<span class="chip">'+c.ductos+' ductos</span>');
       if(c.piezas!=null) chips.push('<span class="chip">'+c.piezas+' piezas</span>');
       if(c.lienzos!=null) chips.push('<span class="chip">'+c.lienzos+' lienzos</span>');
+      if(c.membranas) chips.push('<span class="chip">'+c.membranas+' membranas</span>');
       if(c.accesorios) chips.push('<span class="chip">'+c.unidadesAcc+' accesorios</span>');
     }else{
       chips.push('<span class="chip mal">Formato antiguo · solo Corte</span>');
@@ -2261,8 +2534,16 @@ var Corte=(function(){
   function badges(it){
     var b=[];
     if(it.ruta&&it.ruta!=='—') b.push('<span class="et ruta">'+esc(it.ruta)+'</span>');
-    if(it.tipo) b.push('<span class="et '+(it.esVena?'vena':'tipo')+'">'+(it.esVena?'🩹 ':'🔖 ')+esc(it.tipo)+'</span>');
-    if(it.ancho_cm) b.push('<span class="et">'+fmt(it.largo_cm)+' × '+fmt(it.ancho_cm)+' cm</span>');
+    if(it.tipo) b.push('<span class="et '+(it.esVena?'vena':(it.esMembrana?'memb':'tipo'))+'">'+
+      (it.esVena?'🩹 ':(it.esMembrana?'🧷 ':'🔖 '))+esc(it.tipo)+'</span>');
+    if(it.esMembrana){
+      // El alto sale de la geometría del CAM y lleva su centímetro de costura
+      // por lado. El largo NO: en el CAM es LongitudSinCost − 5 cm y eso no
+      // viene en el .json, así que no se pone un número que no se puede firmar.
+      b.push('<span class="et">alto '+fmt(it.ancho_cm)+' cm (con costura)</span>');
+      b.push('<span class="et">largo: todo lo que mide la pieza</span>');
+    }
+    else if(it.ancho_cm) b.push('<span class="et">'+fmt(it.largo_cm)+' × '+fmt(it.ancho_cm)+' cm</span>');
     if(it.material) b.push('<span class="et mat">🧵 '+esc(it.material)+'</span>');
     if(it.color) b.push('<span class="et"><span class="muestra" style="background:'+hexColor(it.color)+'"></span>'+esc(it.color)+'</span>');
     if(it.difusion){
@@ -2561,6 +2842,21 @@ var Ens=(function(){
     var h=['<span class="fd-per"><i>Perímetro</i><b>'+
            (D.perimetro_cm>0?(fmt(D.perimetro_cm)+' cm'):'sin dato')+'</b></span>'];
 
+    /* Elíptico: la medida y las membranas. El elíptico no es una elipse, es un
+       contorno lobulado, y la ficha tiene que decir de dónde salió la medida:
+       del archivo, o deducida de los anchos de lienzo. */
+    if(D.medida){
+      h.push('<span class="fd-per"><i>Medida</i><b>'+fmt(D.medida.D1)+' × '+fmt(D.medida.D2)+' cm'+
+             (D.medidaOrigen==='lienzos'?' *':'')+'</b></span>');
+      if(D.membrana)
+        h.push('<span class="fd-per"><i>Membranas</i><b>'+D.membrana.n+' × '+
+               fmt(D.membrana.ancho_cm)+' cm de alto</b></span>');
+    }else if(clasificarForma(D.forma)==='eliptica'){
+      h.push('<span class="fd-per" title="El .json no trae la medida y los anchos de '+
+             'lienzo no la determinan. El dibujo es un esquema, no la forma real."><i>Medida</i>'+
+             '<b>sin dato</b></span>');
+    }
+
     if(D.accesorios&&D.accesorios.length){
       h.push('<span class="fd-acc"><i>Lleva</i>'+chipsAcc(D.accesorios)+'</span>');
     }else if(S&&!P.hayUbicacionAcc&&S.accesorios.length){
@@ -2570,6 +2866,10 @@ var Ens=(function(){
              'accesorio. Vuelve a generar el proyecto en el CAM para verlo por ducto.">'+
              '<i>Sistema '+esc(S.id)+'</i>'+chipsAcc(S.accesorios)+'</span>');
     }
+    if(D.medidaOrigen==='lienzos')
+      h.push('<span class="fd-nota">* La medida no viene en el .json: sale de los anchos '+
+             'de lienzo y del perímetro, y cuadra con la fórmula del CAM. Vuelve a generar '+
+             'el proyecto cuando el CAM ya escriba la medida.</span>');
     c.innerHTML=h.join('');
     c.style.display='flex';
   }
@@ -2691,7 +2991,9 @@ var Ens=(function(){
     }
     $('#enVacio').style.display='none';
 
-    var out=buildOutline(D.forma,D.perimetro_cm);
+    // D.lob sólo existe cuando se conoce la medida del elíptico: entonces el
+    // contorno sale LOBULADO, que es la forma de verdad (sección 3.1).
+    var out=buildOutline(D.forma,D.perimetro_cm,{lob:D.lob});
     /* Caja de dibujo adaptativa: sólo se reserva arriba lo que el soporte realmente
        necesita, para que un tirante de 0.07 m no deje media lámina en blanco. */
     var geo=calcSoportes(D,out);
@@ -2719,7 +3021,25 @@ var Ens=(function(){
     var h0=(D.horas.length?D.horas[0]:9);
     var t0=out.fractionAtHour(h0);
     var c=out.centro();
-    var gSect=el('g',{},svg), gSep=el('g',{},svg), gGuia=el('g',{},svg), gLab=el('g',{},svg);
+    var gSect=el('g',{},svg), gSep=el('g',{},svg), gMem=el('g',{},svg),
+        gGuia=el('g',{},svg), gLab=el('g',{},svg);
+
+    /* --- MEMBRANAS del elíptico ---
+       Van encima de las cuñas de lienzo, que es donde de verdad están: cada
+       una cierra una cintura entre dos lóbulos. */
+    if(out.membranas&&out.membranas.length){
+      out.membranas.forEach(function(mb,mi){
+        el('line',{x1:mb.x1,y1:mb.y1,x2:mb.x2,y2:mb.y2,stroke:'#be185d','stroke-width':7,
+          'stroke-linecap':'round','vector-effect':'non-scaling-stroke'},gMem);
+        var tm=el('text',{x:mb.x2,y:mb.y2+48,'text-anchor':'middle',
+          'font-family':"'Inter',sans-serif",'font-weight':900,'font-size':30,
+          fill:'#be185d','paint-order':'stroke',stroke:'#fff','stroke-width':7,
+          'stroke-linejoin':'round'},gMem);
+        tm.textContent='M'+(mi+1);
+        el('title',{},tm).textContent=D.numero+' - '+pz.letra+' M'+(mi+1)+
+          (D.membrana?('  ·  alto '+fmt(D.membrana.ancho_cm)+' cm con costura'):'');
+      });
+    }
     var minX=Infinity, maxX=-Infinity;
     out.pts.forEach(function(p){ if(p[0]<minX)minX=p[0]; if(p[0]>maxX)maxX=p[0]; });
     var colX={der:maxX+80, izq:minX-80};
@@ -3074,6 +3394,10 @@ var Ens=(function(){
         d.push(D.perimetro_cm>0 ? ('perímetro '+fmt(D.perimetro_cm)+' cm')
                                 : 'sin perímetro en el archivo');
         if(clasificarForma(D.forma)==='circular'&&D.diametro_cm) d.push('Ø '+fmt(D.diametro_cm)+' cm');
+        if(D.medida) d.push(fmt(D.medida.D1)+' × '+fmt(D.medida.D2)+' cm'+
+                            (D.medidaOrigen==='lienzos'?' (medida deducida)':''));
+        if(D.membrana) d.push(D.membrana.n+' membranas por pieza, '+
+                              fmt(D.membrana.ancho_cm)+' cm de alto');
         d.push(hh+' de '+tot+' lienzos marcados');
         h.push('<div class="imp-duc-d">'+esc(d.join(' · '))+'</div>');
         if(D.accesorios&&D.accesorios.length)
@@ -3097,6 +3421,16 @@ var Ens=(function(){
               '<td class="id">'+esc(L.id)+(L.esVena?' <b>(VENA)</b>':'')+'</td>'+
               '<td class="m">'+fmt(L.largo_cm)+' × '+fmt(L.ancho_cm)+' cm</td>'+
               '<td class="mat">'+esc([L.material,L.color].filter(Boolean).join(' · '))+'</td>'+
+              '</tr>');
+          });
+          // Las membranas del elíptico: no son lienzos del contorno, van dentro.
+          pz.membranas.forEach(function(M,mi){
+            h.push('<tr>'+
+              '<td class="c">☐</td>'+
+              '<td class="l">M'+(mi+1)+'</td>'+
+              '<td class="id">'+esc(M.id)+' <b>(MEMBRANA)</b></td>'+
+              '<td class="m">alto '+fmt(M.ancho_cm)+' cm × todo el largo de la pieza</td>'+
+              '<td class="mat">'+esc([M.material,M.color].filter(Boolean).join(' · '))+'</td>'+
               '</tr>');
           });
           h.push('</tbody></table></div>');
