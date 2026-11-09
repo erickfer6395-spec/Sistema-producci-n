@@ -1533,6 +1533,20 @@ function buildOutline(forma,perimetroCm,opts){
     var dx=Bp[0]-Ap[0], dy=Bp[1]-Ap[1], L=Math.hypot(dx,dy)||1;
     return {x:Ap[0]+dx*u, y:Ap[1]+dy*u, tx:dx/L, ty:dy/L, nx:dy/L, ny:-dx/L, t:t};
   }
+  /* ¿Este punto cae DENTRO del ducto? Hace falta para meter las etiquetas: en
+     las CINTURAS del lobulado la normal del contorno sale en diagonal y mirar
+     sólo hacia el centroide se equivoca de lado. Esto no se equivoca. */
+  function dentroDe(x,y){
+    var d=false;
+    for(var i=0,j=pts.length-1;i<pts.length;j=i++){
+      var yi=pts[i][1], yj=pts[j][1];
+      if((yi>y)!==(yj>y)){
+        var xi=pts[i][0], xj=pts[j][0];
+        if(x < xi+(xj-xi)*(y-yi)/((yj-yi)||1e-9)) d=!d;
+      }
+    }
+    return d;
+  }
   var _c=null;
   function centro(){
     if(_c) return _c;
@@ -1575,7 +1589,7 @@ function buildOutline(forma,perimetroCm,opts){
           membranas:membranas, lobulada:!!(tipo==='eliptica'&&opts.lob),
           esquematico:esquematico, partida:partida, arcoPx:arcoPx, planoPx:planoPx,
           pointAtFraction:pointAtFraction, fractionAtHour:fractionAtHour, pointAtHour:pointAtHour,
-          centro:centro, perimetroCm:P};
+          centro:centro, dentroDe:dentroDe, perimetroCm:P};
 }
 
 /* ==================================================================
@@ -2912,7 +2926,7 @@ var Ens=(function(){
       e.dataset.c=L.clave;
       var ord=e.querySelector('.ord');
       ord.textContent=L.etiqueta;
-      ord.style.background=col;                    // mismo color que su cuña en el dibujo
+      ord.style.background=col;                    // mismo color que su tramo en el dibujo
       e.style.borderLeft='10px solid '+col;
       e.querySelector('.cu b').textContent=L.id;   // el id es lo que va impreso en la tela
       nodosLz[L.clave]=e;
@@ -2927,8 +2941,8 @@ var Ens=(function(){
       var e=nodosLz[L.clave]; if(e) e.classList.toggle('lista-ok',!!est.marcados[L.clave]);
       // El color identifica al lienzo y no cambia; el verde indica "ya está hecho".
       var sec=$('#secL'+L.idx,$('#enDibujo'));
-      if(sec) sec.setAttribute('fill', est.marcados[L.clave]
-        ? 'rgba(16,185,129,.55)' : (sec.getAttribute('data-c')||'#ffffff'));
+      if(sec) sec.setAttribute('stroke', est.marcados[L.clave]
+        ? '#10b981' : (sec.getAttribute('data-c')||'#dc2626'));
     });
     var hp=sel.pieza.lienzos.filter(function(l){ return est.marcados[l.clave]; }).length;
     var tot=sel.pieza.lienzos.length;
@@ -3005,9 +3019,11 @@ var Ens=(function(){
       if(e.ctrlKey||e.metaKey){ e.preventDefault(); cambiarZoom(e.deltaY<0?0.15:-0.15); }
     },{passive:false});
 
-    /* --- contorno del ducto --- */
-    el('path',{d:out.d, fill:'#ffffff', stroke:'#dc2626','stroke-width':6,
-      'stroke-dasharray': out.esquematico?'12 7':null,
+    /* --- fondo del ducto ---
+       El borde ya NO es una raya sola: lo pinta cada lienzo en su tramo (mas
+       abajo), que es lo que de verdad hay que ver. Esto queda como relleno y
+       como guia tenue por si un tramo no llegara a cubrirlo. */
+    el('path',{d:out.d, fill:'#ffffff', stroke:'#cbd5e1','stroke-width':3,
       'vector-effect':'non-scaling-stroke'},svg);
 
     /* --- sectores de lienzo, repartidos por ancho NETO --- */
@@ -3027,15 +3043,22 @@ var Ens=(function(){
     /* --- MEMBRANAS del elíptico ---
        Van encima de las cuñas de lienzo, que es donde de verdad están: cada
        una cierra una cintura entre dos lóbulos. */
+    var fijos=[];      // lo que ya ocupa sitio y NO se mueve: las M
     if(out.membranas&&out.membranas.length){
       out.membranas.forEach(function(mb,mi){
-        el('line',{x1:mb.x1,y1:mb.y1,x2:mb.x2,y2:mb.y2,stroke:'#be185d','stroke-width':7,
+        el('line',{x1:mb.x1,y1:mb.y1,x2:mb.x2,y2:mb.y2,stroke:'#be185d','stroke-width':8,
           'stroke-linecap':'round','vector-effect':'non-scaling-stroke'},gMem);
-        var tm=el('text',{x:mb.x2,y:mb.y2+48,'text-anchor':'middle',
+        // Los dos puntos marcan dónde cose la membrana contra el contorno.
+        el('circle',{cx:mb.x1,cy:mb.y1,r:7,fill:'#be185d',stroke:'#fff',
+          'stroke-width':3,'vector-effect':'non-scaling-stroke'},gMem);
+        el('circle',{cx:mb.x2,cy:mb.y2,r:7,fill:'#be185d',stroke:'#fff',
+          'stroke-width':3,'vector-effect':'non-scaling-stroke'},gMem);
+        var tm=el('text',{x:mb.x2, y:mb.y2+56, 'text-anchor':'middle',
           'font-family':"'Inter',sans-serif",'font-weight':900,'font-size':30,
           fill:'#be185d','paint-order':'stroke',stroke:'#fff','stroke-width':7,
           'stroke-linejoin':'round'},gMem);
         tm.textContent='M'+(mi+1);
+        fijos.push({x:mb.x2, y:mb.y2+56, ancho:22*('M'+(mi+1)).length+12});
         el('title',{},tm).textContent=D.numero+' - '+pz.letra+' M'+(mi+1)+
           (D.membrana?('  ·  alto '+fmt(D.membrana.ancho_cm)+' cm con costura'):'');
       });
@@ -3045,45 +3068,115 @@ var Ens=(function(){
     var colX={der:maxX+80, izq:minX-80};
     // SEPARACION cuenta el alto del texto (≈44) MÁS el halo blanco de 7 por lado:
     // con menos de 60 las etiquetas de fuera se tocan.
-    var RADIO_ETQ=0.62, ANCHO_MIN=86, SEPARACION=62;
+    // SEPARACION cuenta el alto del texto (≈44) MÁS el halo blanco de 7 por lado.
+    // ANCHO_MIN es el tramo de contorno que hace falta para que la etiqueta quepa
+    // pegada a él; si no llega, la etiqueta sale fuera con su línea guía.
+    var ANCHO_MIN=86, SEPARACION=62;
+    var BANDA=20;      // grosor del tramo de lienzo, en unidades del dibujo
+    var DENTRO=42;     // cuánto se mete la etiqueta hacia el interior del ducto
 
-    // 1) sectores y separadores; se anota dónde CABRÍA cada etiqueta
+    /* 1) CADA LIENZO ES UN TRAMO DEL CONTORNO, no una rebanada de pastel: se
+          recorre el borde desde la hora de arranque y se pinta lo que mide cada
+          uno. Así se ve en qué parte del ducto va, que es lo que hace falta en
+          el taller. */
     var etiquetas=[], t=t0;
     pz.lienzos.forEach(function(L,i){
       var tIni=t, tFin=t+nets[i]/suma, col=colorLienzo(i);
-      var pasos=Math.max(2,Math.ceil((tFin-tIni)*180));
-      var dd='M '+c.x.toFixed(2)+' '+c.y.toFixed(2);
+      var pasos=Math.max(4,Math.ceil((tFin-tIni)*720));
+      var dd='', largoPx=0, ant=null;
       for(var s=0;s<=pasos;s++){
         var p=out.pointAtFraction(tIni+(tFin-tIni)*(s/pasos));
-        dd+=' L '+p.x.toFixed(2)+' '+p.y.toFixed(2);
+        dd+=(s?' L ':'M ')+p.x.toFixed(2)+' '+p.y.toFixed(2);
+        if(ant) largoPx+=Math.hypot(p.x-ant.x,p.y-ant.y);
+        ant=p;
       }
-      dd+=' Z';
-      var tenue=tinte(col,0.20);
-      var sec=el('path',{id:'secL'+L.idx, d:dd, fill:tenue, 'data-c':tenue,
-        stroke:'none', style:'cursor:pointer'},gSect);
-      sec.addEventListener('click',function(){ alternar(L); });
-      sec.addEventListener('mouseenter',function(){
-        var e=nodosLz[L.clave]; if(e) e.classList.add('res'); });
-      sec.addEventListener('mouseleave',function(){
-        var e=nodosLz[L.clave]; if(e) e.classList.remove('res'); });
+      // Zona de toque ancha e invisible: en la tableta se marca con el dedo y la
+      // banda sola sería muy delgada para atinarle.
+      var hit=el('path',{d:dd, fill:'none', stroke:'#000','stroke-opacity':0,
+        'stroke-width':BANDA+30,'stroke-linecap':'butt',
+        'pointer-events':'stroke', style:'cursor:pointer'},gSect);
+      var sec=el('path',{id:'secL'+L.idx, d:dd, fill:'none', stroke:col, 'data-c':col,
+        'stroke-width':BANDA,'stroke-linecap':'butt','stroke-linejoin':'round',
+        'pointer-events':'stroke', style:'cursor:pointer'},gSect);
+      [hit,sec].forEach(function(nd){
+        nd.addEventListener('click',function(){ alternar(L); });
+        nd.addEventListener('mouseenter',function(){
+          var e=nodosLz[L.clave]; if(e) e.classList.add('res'); });
+        nd.addEventListener('mouseleave',function(){
+          var e=nodosLz[L.clave]; if(e) e.classList.remove('res'); });
+      });
       el('title',{},sec).textContent=L.id+'  ·  ancho '+fmt(L.ancho_cm)+' cm';
 
-      var pi=out.pointAtFraction(tIni);
-      el('line',{x1:c.x,y1:c.y,x2:pi.x,y2:pi.y,stroke:'#0f172a','stroke-width':4,
-        'stroke-linecap':'round','vector-effect':'non-scaling-stroke'},gSep);
+      // Marca de unión: cruza el contorno justo donde EMPIEZA este lienzo.
+      var pi=out.pointAtFraction(tIni), gq=BANDA/2+9;
+      el('line',{x1:pi.x-pi.nx*gq, y1:pi.y-pi.ny*gq, x2:pi.x+pi.nx*gq, y2:pi.y+pi.ny*gq,
+        stroke:'#0f172a','stroke-width':4,'stroke-linecap':'round',
+        'vector-effect':'non-scaling-stroke'},gSep);
 
-      // ¿cabe la etiqueta dentro de la cuña? Se mide el hueco real a la altura
-      // donde iría, no el ángulo: así vale igual para el círculo y para la elipse.
+      // Sitio que le toca a la etiqueta: pegada a SU tramo, por dentro del
+      // ducto. Los choques se resuelven después, con todas ya apuntadas.
       var pm=out.pointAtFraction((tIni+tFin)/2);
-      var pA=out.pointAtFraction(tIni), pB=out.pointAtFraction(tFin);
-      var hueco=Math.hypot((pB.x-pA.x)*RADIO_ETQ,(pB.y-pA.y)*RADIO_ETQ);
-      etiquetas.push({L:L, col:col, dentro:hueco>=ANCHO_MIN,
-        x:c.x+(pm.x-c.x)*RADIO_ETQ, y:c.y+(pm.y-c.y)*RADIO_ETQ,
-        borde:{x:pm.x,y:pm.y}, lado:(pm.x>=c.x?'der':'izq')});
+      var nx=pm.nx, ny=pm.ny;
+      // La normal de la cintura es ambigua: se comprueba de qué lado cae de
+      // verdad la etiqueta y, si ningún lado sirve, se tira hacia el centro.
+      if(!out.dentroDe(pm.x+nx*DENTRO,pm.y+ny*DENTRO)){ nx=-nx; ny=-ny; }
+      if(!out.dentroDe(pm.x+nx*DENTRO,pm.y+ny*DENTRO)){
+        var vx=c.x-pm.x, vy=c.y-pm.y, vl=Math.hypot(vx,vy)||1;
+        nx=vx/vl; ny=vy/vl;
+      }
+      etiquetas.push({L:L, col:col, largo:largoPx, nx:nx, ny:ny,
+        ancho:22*String(L.etiqueta||'').length+12,
+        borde:{x:pm.x,y:pm.y}, lado:(pm.x>=c.x?'der':'izq'),
+        modo:(largoPx>=ANCHO_MIN?'dentro':'borde')});
       t=tFin;
     });
 
-    // 2) las que no caben salen FUERA del ducto, en columna y separadas entre sí
+    // Cuando la forma es un esquema (elíptico sin medida) se sigue avisando con
+    // la raya roja discontinua, ahora encima de los tramos.
+    if(out.esquematico)
+      el('path',{d:out.d, fill:'none', stroke:'#dc2626','stroke-width':3,
+        'stroke-dasharray':'12 7','vector-effect':'non-scaling-stroke'},gSep);
+
+    /* 2) CHOQUES. Cada etiqueta quiere ir por dentro de su tramo; si se encima
+          con otra, la del tramo más corto se pasa al otro lado del contorno, y
+          si ahí tampoco cabe se va a la columna del costado con su línea guía.
+          Dos números encimados hacen dudar en el taller, y eso no puede pasar.
+          Se nota en los ductos muy aplanados, donde arriba y abajo quedan a un
+          palmo y todas las etiquetas caerían en la misma franja. */
+    var FUERA=38, ALTO_ETQ=46;
+    function colocarEtq(e){
+      var sgn=(e.modo==='borde')?-FUERA:DENTRO;
+      e.x=e.borde.x+e.nx*sgn; e.y=e.borde.y+e.ny*sgn;
+      e.dentro=(e.modo!=='columna');    // 'columna' es la única que lleva guía
+    }
+    etiquetas.forEach(colocarEtq);
+    for(var vuelta=0;vuelta<8;vuelta++){
+      var hubo=false;
+      for(var ia=0;ia<etiquetas.length;ia++){
+        for(var ib=ia+1;ib<etiquetas.length;ib++){
+          var EA=etiquetas[ia], EB=etiquetas[ib];
+          if(EA.modo==='columna'||EB.modo==='columna') continue;
+          if(Math.abs(EA.x-EB.x)>=(EA.ancho+EB.ancho)/2) continue;
+          if(Math.abs(EA.y-EB.y)>=ALTO_ETQ) continue;
+          var pierde=(EA.largo<=EB.largo)?EA:EB;   // manda el tramo más largo
+          pierde.modo=(pierde.modo==='dentro')?'borde':'columna';
+          colocarEtq(pierde); hubo=true;
+        }
+      }
+      // y contra las M, que no se apartan: la membrana va donde va
+      etiquetas.forEach(function(E){
+        if(E.modo==='columna') return;
+        for(var f=0;f<fijos.length;f++){
+          if(Math.abs(E.x-fijos[f].x)>=(E.ancho+fijos[f].ancho)/2) continue;
+          if(Math.abs(E.y-fijos[f].y)>=ALTO_ETQ) continue;
+          E.modo=(E.modo==='dentro')?'borde':'columna';
+          colocarEtq(E); hubo=true; return;
+        }
+      });
+      if(!hubo) break;
+    }
+
+    // 3) las que ni así caben salen FUERA del ducto, en columna y separadas
     ['der','izq'].forEach(function(lado){
       var fuera=etiquetas.filter(function(e){ return !e.dentro && e.lado===lado; });
       if(!fuera.length) return;
@@ -3093,7 +3186,7 @@ var Ens=(function(){
       fuera.forEach(function(e,k){ e.x=colX[lado]; e.y=inicio+k*SEPARACION; });
     });
 
-    // 3) líneas guía y etiquetas
+    // 4) líneas guía y etiquetas
     etiquetas.forEach(function(e){
       if(!e.dentro){
         el('polyline',{points:e.borde.x.toFixed(1)+','+e.borde.y.toFixed(1)+' '+
